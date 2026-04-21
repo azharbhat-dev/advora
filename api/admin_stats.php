@@ -8,47 +8,58 @@ $users     = readJson(USERS_FILE);
 $topups    = readJson(TOPUPS_FILE);
 $creatives = readJson(CREATIVES_FILE);
 
-$totals=['impressions'=>0,'clicks'=>0,'good_hits'=>0,'spent'=>0,'balance'=>0,'users'=>count($users),'campaigns'=>count($campaigns)];
-foreach($campaigns as $c){
-    $totals['impressions'] += $c['impressions']??0;
-    $totals['clicks']      += $c['clicks']??0;
-    $totals['good_hits']   += $c['good_hits']??0;
-    $totals['spent']       += $c['spent']??0;
+$totals = [
+    'impressions' => 0,
+    'views'       => 0,
+    'hits'        => 0,   // stored as clicks
+    'spent'       => 0,
+    'balance'     => 0,
+    'users'       => count($users),
+    'campaigns'   => count($campaigns)
+];
+foreach ($campaigns as $c) {
+    $totals['impressions'] += $c['impressions'] ?? 0;
+    $totals['views']       += $c['good_hits']   ?? 0;
+    $totals['hits']        += $c['clicks']       ?? 0;
+    $totals['spent']       += $c['spent']        ?? 0;
 }
-foreach($users as $u) $totals['balance'] += $u['balance']??0;
+foreach ($users as $u) $totals['balance'] += $u['balance'] ?? 0;
 
-$pending=[
-    'campaigns' => count(array_filter($campaigns, fn($c)=>in_array($c['status'],['pending','review']))),
-    'creatives' => count(array_filter($creatives, fn($c)=>$c['status']==='pending')),
-    'topups'    => count(array_filter($topups,    fn($t)=>$t['status']==='pending')),
+$pending = [
+    'campaigns' => count(array_filter($campaigns, fn($c) => in_array($c['status'], ['pending','review']))),
+    'creatives' => count(array_filter($creatives,  fn($c) => $c['status'] === 'pending')),
+    'topups'    => count(array_filter($topups,     fn($t) => $t['status'] === 'pending')),
 ];
 
-$campList=[];
-foreach($campaigns as $c){
-    $campList[$c['campaign_id']]=[
+$campList = [];
+foreach ($campaigns as $c) {
+    $campList[$c['campaign_id']] = [
         'status'      => $c['status'],
-        'impressions' => $c['impressions']??0,
-        'clicks'      => $c['clicks']??0,
-        'good_hits'   => $c['good_hits']??0,
-        'spent'       => $c['spent']??0,
+        'impressions' => $c['impressions'] ?? 0,
+        'views'       => $c['good_hits']   ?? 0,
+        'hits'        => $c['clicks']       ?? 0,
+        'spent'       => $c['spent']        ?? 0,
     ];
 }
 
-$userList=[];
-foreach($users as $u){
-    $userList[$u['id']]=['balance'=>$u['balance']??0,'disabled'=>$u['disabled']??false];
+$userList = [];
+foreach ($users as $u) {
+    $userList[$u['id']] = ['balance' => $u['balance'] ?? 0, 'disabled' => $u['disabled'] ?? false];
 }
 
-$crList=[];
-foreach($creatives as $cr){
-    $crList[$cr['id']]=['status'=>$cr['status']];
-}
+$crList = [];
+foreach ($creatives as $cr) { $crList[$cr['id']] = ['status' => $cr['status']]; }
 
-$topupList=[];
-foreach($topups as $t){
-    $topupList[$t['id']]=['status'=>$t['status']];
-}
+$topupList = [];
+foreach ($topups as $t) { $topupList[$t['id']] = ['status' => $t['status']]; }
 
-echo json_encode(['success'=>true,'totals'=>$totals,'pending'=>$pending,
-    'campaigns'=>$campList,'users'=>$userList,'creatives'=>$crList,
-    'topups'=>$topupList,'timestamp'=>time()]);
+echo json_encode([
+    'success'   => true,
+    'totals'    => $totals,
+    'pending'   => $pending,
+    'campaigns' => $campList,
+    'users'     => $userList,
+    'creatives' => $crList,
+    'topups'    => $topupList,
+    'timestamp' => time()
+]);

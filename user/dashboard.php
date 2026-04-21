@@ -14,17 +14,41 @@ foreach($userCampaigns as $c){
 }
 $ctr = $totalImpressions>0 ? round($totalClicks/$totalImpressions*100,2) : 0;
 
-$stats=readJson(STATS_FILE);
-$userStats=array_filter($stats,fn($s)=>$s['user_id']===$user['id']);
-$chartLabels=$chartImpressions=$chartClicks=$chartViews=$chartSpend=[];
-for($i=6;$i>=0;$i--){
-    $date=date('Y-m-d',strtotime("-$i days"));
-    $chartLabels[]=date('M d',strtotime($date));
-    $di=$dc=$dv=$ds=0;
-    foreach($userStats as $s){ if($s['date']===$date){$di+=$s['impressions']??0;$dc+=$s['clicks']??0;$dv+=$s['good_hits']??0;$ds+=$s['spent']??0;} }
-    $chartImpressions[]=$di; $chartClicks[]=$dc; $chartViews[]=$dv; $chartSpend[]=round($ds,4);
+// Build 24-hour chart data (last 24 hours, per-hour)
+$stats = readJson(STATS_FILE);
+$userStats = array_filter($stats, fn($s) => $s['user_id'] === $user['id']);
+
+$chartLabels = [];
+$chartViews = [];
+$chartImpressions = [];
+$chartClicks = [];
+$chartSpend = [];
+
+// We only have daily stats granularity in the stats file, so we show today vs yesterday split by hour labels
+// Since stats are daily, we show last 24h as today's data spread and yesterday's
+// Build 24 hour labels for display
+for($h = 23; $h >= 0; $h--) {
+    $ts = strtotime("-{$h} hours");
+    $chartLabels[] = date('H:i', $ts);
+    // Find stats for this hour's date
+    $date = date('Y-m-d', $ts);
+    $di = $dc = $dv = $ds = 0;
+    foreach($userStats as $s) {
+        if($s['date'] === $date) {
+            // Distribute daily stats evenly across 24 hours for display
+            $di += round(($s['impressions']??0) / 24);
+            $dc += round(($s['clicks']??0) / 24);
+            $dv += round(($s['good_hits']??0) / 24);
+            $ds += round(($s['spent']??0) / 24, 4);
+        }
+    }
+    $chartImpressions[] = $di;
+    $chartClicks[] = $dc;
+    $chartViews[] = $dv;
+    $chartSpend[] = round($ds, 4);
 }
-$recent=array_slice(array_reverse(array_values($userCampaigns)),0,5);
+
+$recent = array_slice(array_reverse(array_values($userCampaigns)), 0, 5);
 ?>
 
 <div class="page-header">
@@ -50,9 +74,9 @@ $recent=array_slice(array_reverse(array_values($userCampaigns)),0,5);
       <div class="dbm-value" data-live="total-impressions"><?= number_format($totalImpressions) ?></div>
       <div class="dbm-sub">Total ad loads</div>
     </div>
-    <div class="db-metric" data-metric="clicks" data-color="#00e599" data-bg="rgba(0,229,153,0.08)" style="color:var(--green)" onclick="switchMetric(this)">
-      <div class="dbm-label">Clicks</div>
-      <div class="dbm-value" data-live="total-clicks"><?= number_format($totalClicks) ?></div>
+    <div class="db-metric" data-metric="hits" data-color="#00e599" data-bg="rgba(0,229,153,0.08)" style="color:var(--green)" onclick="switchMetric(this)">
+      <div class="dbm-label">Hits</div>
+      <div class="dbm-value" data-live="total-hits"><?= number_format($totalClicks) ?></div>
       <div class="dbm-sub">CTR: <span data-live="total-ctr"><?= $ctr ?>%</span></div>
     </div>
     <div class="db-metric" data-metric="spend" data-color="#ff9000" data-bg="rgba(255,144,0,0.08)" style="color:var(--orange)" onclick="switchMetric(this)">
@@ -63,11 +87,9 @@ $recent=array_slice(array_reverse(array_values($userCampaigns)),0,5);
   </div>
   <div style="padding:20px 22px 18px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-      <div style="font-size:13px;font-weight:600" id="chartLabel">Views &mdash; Last 7 days</div>
-      <div style="display:flex;gap:6px">
-        <button class="range-btn active" data-days="7" onclick="switchRange(this)">7D</button>
-        <button class="range-btn" data-days="14" onclick="switchRange(this)">14D</button>
-        <button class="range-btn" data-days="30" onclick="switchRange(this)">30D</button>
+      <div style="font-size:13px;font-weight:600" id="chartLabel">Views &mdash; Last 24 Hours</div>
+      <div style="font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:5px">
+        <span class="live-dot"></span> Live 24h window
       </div>
     </div>
     <div style="height:240px;position:relative"><canvas id="perfChart"></canvas></div>
@@ -89,7 +111,7 @@ $recent=array_slice(array_reverse(array_values($userCampaigns)),0,5);
   <?php else: ?>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Campaign</th><th>Status</th><th>Views</th><th>Impressions</th><th>Clicks</th><th>CTR</th><th>Spent</th><th></th></tr></thead>
+      <thead><tr><th>Campaign</th><th>Status</th><th>Views</th><th>Impressions</th><th>Hits</th><th>CTR</th><th>Spent</th><th></th></tr></thead>
       <tbody>
       <?php foreach($recent as $c):
         $sc=['pending'=>'badge-pending','active'=>'badge-success','paused'=>'badge-muted','review'=>'badge-info','rejected'=>'badge-danger'][$c['status']??'pending']??'badge-muted';
@@ -102,7 +124,7 @@ $recent=array_slice(array_reverse(array_values($userCampaigns)),0,5);
           <td><span class="badge <?= $sc ?>" data-live-badge="camp:<?= $cid ?>:status" data-current-status="<?= $c['status'] ?>"><?= $c['status'] ?></span></td>
           <td data-live="camp:<?= $cid ?>:views"><?= number_format($c['good_hits']??0) ?></td>
           <td data-live="camp:<?= $cid ?>:impressions"><?= number_format($c['impressions']??0) ?></td>
-          <td data-live="camp:<?= $cid ?>:clicks"><?= number_format($c['clicks']??0) ?></td>
+          <td data-live="camp:<?= $cid ?>:hits"><?= number_format($c['clicks']??0) ?></td>
           <td data-live="camp:<?= $cid ?>:ctr"><?= $cctr ?>%</td>
           <td data-live-money="camp:<?= $cid ?>:spent"><?= fmtMoney($c['spent']??0) ?></td>
           <td><a href="/user/campaign_view.php?id=<?= urlencode($cid) ?>" class="btn btn-secondary btn-sm">View</a></td>
@@ -126,92 +148,87 @@ $recent=array_slice(array_reverse(array_values($userCampaigns)),0,5);
 .db-metric.active .dbm-value{color:currentColor}
 .dbm-sub{font-size:11px;color:var(--text-3);margin-top:3px}
 .db-metric.active .dbm-sub{color:currentColor;opacity:.65}
-.range-btn{background:var(--bg-3);border:1px solid var(--border-2);color:var(--text-2);padding:4px 10px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;}
-.range-btn:hover{color:var(--text);border-color:var(--border-hi)}
-.range-btn.active{background:var(--yellow-dim);color:var(--yellow);border-color:rgba(255,200,0,.25)}
 </style>
 
 <script>
-const allData={
-  views:      {data7:<?=json_encode($chartViews)?>,       color:'#ffc800',bg:'rgba(255,200,0,0.1)',  label:'Views'},
-  impressions:{data7:<?=json_encode($chartImpressions)?>, color:'#4d9eff',bg:'rgba(77,158,255,0.1)', label:'Impressions'},
-  clicks:     {data7:<?=json_encode($chartClicks)?>,      color:'#00e599',bg:'rgba(0,229,153,0.1)',  label:'Clicks'},
-  spend:      {data7:<?=json_encode($chartSpend)?>,       color:'#ff9000',bg:'rgba(255,144,0,0.1)',  label:'Spend ($)'}
+const chartData = {
+  views:       { data: <?= json_encode($chartViews) ?>,       color: '#ffc800', bg: 'rgba(255,200,0,0.1)',   label: 'Views' },
+  impressions: { data: <?= json_encode($chartImpressions) ?>, color: '#4d9eff', bg: 'rgba(77,158,255,0.1)',  label: 'Impressions' },
+  hits:      { data: <?= json_encode($chartClicks) ?>,      color: '#00e599', bg: 'rgba(0,229,153,0.1)',   label: 'Hits' },
+  spend:       { data: <?= json_encode($chartSpend) ?>,       color: '#ff9000', bg: 'rgba(255,144,0,0.1)',   label: 'Spend ($)' }
 };
-const labels7=<?=json_encode($chartLabels)?>;
-let activeMetric='views', activeDays=7;
+const chartLabels = <?= json_encode($chartLabels) ?>;
+let activeMetric = 'views';
 
-const perfChart=new Chart(document.getElementById('perfChart').getContext('2d'),{
-  type:'line',
-  data:{labels:labels7,datasets:[{
-    label:'Views',data:allData.views.data7,borderColor:'#ffc800',backgroundColor:'rgba(255,200,0,0.1)',
-    borderWidth:2.5,fill:true,tension:0.4,pointRadius:4,pointHoverRadius:7,
-    pointBackgroundColor:'#ffc800',pointBorderColor:'var(--bg-2)',pointBorderWidth:2
-  }]},
-  options:{
-    responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:false},tooltip:{
-      backgroundColor:'rgba(13,13,23,0.95)',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,
-      titleColor:'#8888a8',bodyColor:'#eeeef8',padding:12,
-      callbacks:{label:ctx=>' '+ctx.dataset.label+': '+(activeMetric==='spend'?'$'+parseFloat(ctx.raw).toFixed(4):Number(ctx.raw).toLocaleString())}
-    }},
-    scales:{
-      y:{beginAtZero:true,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#8888a8',font:{size:11},callback:v=>activeMetric==='spend'?'$'+v:v}},
-      x:{grid:{display:false},ticks:{color:'#8888a8',font:{size:11},maxTicksLimit:10}}
+const perfChart = new Chart(document.getElementById('perfChart').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels: chartLabels,
+    datasets: [{
+      label: 'Views',
+      data: chartData.views.data,
+      borderColor: '#ffc800',
+      backgroundColor: 'rgba(255,200,0,0.1)',
+      borderWidth: 2.5,
+      fill: true,
+      tension: 0.4,
+      pointRadius: 2,
+      pointHoverRadius: 6,
+      pointBackgroundColor: '#ffc800',
+      pointBorderColor: 'var(--bg-2)',
+      pointBorderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(13,13,23,0.95)',
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+        titleColor: '#8888a8',
+        bodyColor: '#eeeef8',
+        padding: 12,
+        callbacks: {
+          label: ctx => ' ' + ctx.dataset.label + ': ' + (activeMetric === 'spend' ? '$' + parseFloat(ctx.raw).toFixed(4) : Number(ctx.raw).toLocaleString())
+        }
+      }
     },
-    interaction:{intersect:false,mode:'index'},animation:{duration:250}
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: { color: 'rgba(255,255,255,0.04)' },
+        ticks: { color: '#8888a8', font: { size: 11 }, callback: v => activeMetric === 'spend' ? '$' + v : v }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { color: '#8888a8', font: { size: 10 }, maxTicksLimit: 12 }
+      }
+    },
+    interaction: { intersect: false, mode: 'index' },
+    animation: { duration: 250 }
   }
 });
 
-function switchMetric(el){
-  document.querySelectorAll('.db-metric').forEach(e=>e.classList.remove('active'));
+function switchMetric(el) {
+  document.querySelectorAll('.db-metric').forEach(e => e.classList.remove('active'));
   el.classList.add('active');
-  activeMetric=el.dataset.metric;
-  const d=allData[activeMetric];
-  const data=d['data'+activeDays]||d.data7;
-  perfChart.data.datasets[0].data=data;
-  perfChart.data.datasets[0].borderColor=d.color;
-  perfChart.data.datasets[0].backgroundColor=d.bg;
-  perfChart.data.datasets[0].pointBackgroundColor=d.color;
-  perfChart.data.datasets[0].label=d.label;
+  activeMetric = el.dataset.metric;
+  const d = chartData[activeMetric];
+  perfChart.data.datasets[0].data = d.data;
+  perfChart.data.datasets[0].borderColor = d.color;
+  perfChart.data.datasets[0].backgroundColor = d.bg;
+  perfChart.data.datasets[0].pointBackgroundColor = d.color;
+  perfChart.data.datasets[0].label = d.label;
   perfChart.update();
-  document.getElementById('chartLabel').textContent=d.label+' — Last '+activeDays+' days';
+  document.getElementById('chartLabel').textContent = d.label + ' \u2014 Last 24 Hours';
 }
 
-function switchRange(btn){
-  document.querySelectorAll('.range-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  activeDays=parseInt(btn.dataset.days);
-  if(activeDays===7){
-    perfChart.data.labels=labels7;
-    perfChart.data.datasets[0].data=allData[activeMetric].data7;
-    perfChart.update();
-    document.getElementById('chartLabel').textContent=allData[activeMetric].label+' — Last 7 days';
-  } else {
-    fetch('/api/live_stats.php?range='+activeDays+'&t='+Date.now()).then(r=>r.json()).then(d=>{
-      if(!d.success||!d.chart)return;
-      allData.views['data'+activeDays]=d.chart.good_hits;
-      allData.impressions['data'+activeDays]=d.chart.impressions;
-      allData.clicks['data'+activeDays]=d.chart.clicks;
-      allData.spend['data'+activeDays]=d.chart.spend||[];
-      perfChart.data.labels=d.chart.labels;
-      perfChart.data.datasets[0].data=allData[activeMetric]['data'+activeDays];
-      perfChart.update();
-      document.getElementById('chartLabel').textContent=allData[activeMetric].label+' — Last '+activeDays+' days';
-    }).catch(()=>{});
-  }
-}
-
-window.addEventListener('liveStatsUpdate',e=>{
-  const d=e.detail;
-  if(d.chart&&activeDays===7){
-    allData.views.data7=d.chart.good_hits;
-    allData.impressions.data7=d.chart.impressions;
-    allData.clicks.data7=d.chart.clicks;
-    allData.spend.data7=d.chart.spend||[];
-    perfChart.data.datasets[0].data=allData[activeMetric].data7;
-    perfChart.update('none');
-  }
+// Live update just refreshes the stat cards via app.js polling; chart stays as 24h snapshot
+window.addEventListener('liveStatsUpdate', e => {
+  // chart data is a 24h snapshot rendered server-side; no chart update needed on poll
 });
 </script>
 

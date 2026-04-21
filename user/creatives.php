@@ -1,8 +1,32 @@
 <?php
 require_once __DIR__ . '/../includes/user_header.php';
 
+// Handle delete
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_creative'])) {
+    $delId = $_POST['creative_id'] ?? '';
+    $creatives = readJson(CREATIVES_FILE);
+    $found = null;
+    foreach ($creatives as $cr) {
+        if ($cr['id'] === $delId && $cr['user_id'] === $user['id']) { $found = $cr; break; }
+    }
+    if ($found) {
+        // Delete the stored file
+        if (!empty($found['stored_file'])) {
+            $path = DATA_PATH . '/creatives_files/' . $found['stored_file'];
+            if (file_exists($path)) unlink($path);
+        }
+        $creatives = array_values(array_filter($creatives, fn($c) => !($c['id'] === $delId && $c['user_id'] === $user['id'])));
+        writeJson(CREATIVES_FILE, $creatives);
+        flash('Creative deleted', 'success');
+    } else {
+        flash('Creative not found', 'error');
+    }
+    safeRedirect('/user/creatives.php');
+}
+
+// Handle upload
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload'])) {
-    $name = trim($_POST['creative_name'] ?? '');
+    $name     = trim($_POST['creative_name'] ?? '');
     $trackUrl = isset($_POST['track_url']) && $_POST['track_url'] === '1';
 
     if (!$name) {
@@ -11,31 +35,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload'])) {
         flash('Please upload an HTML file', 'error');
     } else {
         $file = $_FILES['html_file'];
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $ext  = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         if ($ext !== 'html' && $ext !== 'htm') {
             flash('Only HTML files are allowed', 'error');
         } elseif ($file['size'] > 5 * 1024 * 1024) {
             flash('File too large. Maximum 5MB', 'error');
         } else {
             $creativeId = 'CR-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8));
-            $filename = $creativeId . '.html';
-            $destPath = DATA_PATH . '/creatives_files/' . $filename;
+            $filename   = $creativeId . '.html';
+            $destPath   = DATA_PATH . '/creatives_files/' . $filename;
             if (!is_dir(dirname($destPath))) mkdir(dirname($destPath), 0755, true);
             if (move_uploaded_file($file['tmp_name'], $destPath)) {
-                $creatives = readJson(CREATIVES_FILE);
+                $creatives   = readJson(CREATIVES_FILE);
                 $creatives[] = [
-                    'id' => $creativeId,
-                    'user_id' => $user['id'],
-                    'name' => $name,
-                    'filename' => $file['name'],
+                    'id'          => $creativeId,
+                    'user_id'     => $user['id'],
+                    'name'        => $name,
+                    'filename'    => $file['name'],
                     'stored_file' => $filename,
-                    'file_size' => $file['size'],
-                    'track_url' => $trackUrl,
-                    'status' => 'pending',
+                    'file_size'   => $file['size'],
+                    'track_url'   => $trackUrl,
+                    'status'      => 'pending',
                     'uploaded_at' => time()
                 ];
                 writeJson(CREATIVES_FILE, $creatives);
-                flash('Creative uploaded successfully. Pending admin approval.', 'success');
+                flash('Creative uploaded successfully. It is now under review.', 'success');
             } else {
                 flash('Upload failed. Try again.', 'error');
             }
@@ -44,11 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload'])) {
     safeRedirect('/user/creatives.php');
 }
 
-// Serve the HTML file for preview
+// Serve preview
 if (isset($_GET['preview'])) {
     $previewId = $_GET['preview'];
-    $creatives = readJson(CREATIVES_FILE);
-    foreach ($creatives as $cr) {
+    foreach (readJson(CREATIVES_FILE) as $cr) {
         if ($cr['id'] === $previewId && $cr['user_id'] === $user['id']) {
             $path = DATA_PATH . '/creatives_files/' . $cr['stored_file'];
             if (file_exists($path)) {
@@ -62,7 +85,7 @@ if (isset($_GET['preview'])) {
     http_response_code(404); exit;
 }
 
-$creatives = readJson(CREATIVES_FILE);
+$creatives     = readJson(CREATIVES_FILE);
 $userCreatives = array_reverse(array_values(array_filter($creatives, fn($c) => $c['user_id'] === $user['id'])));
 ?>
 
@@ -101,20 +124,25 @@ $userCreatives = array_reverse(array_values(array_filter($creatives, fn($c) => $
           <td><strong><?= htmlspecialchars($cr['name']) ?></strong></td>
           <td style="font-size:12px;color:var(--text-2)"><?= htmlspecialchars($cr['filename']) ?></td>
           <td><?= number_format($cr['file_size']/1024,1) ?> KB</td>
-          <td>
-            <?php if (!empty($cr['track_url'])): ?>
-              <span class="badge badge-success">Enabled</span>
-            <?php else: ?>
-              <span class="badge badge-muted">Disabled</span>
-            <?php endif; ?>
-          </td>
+          <td><?= !empty($cr['track_url']) ? '<span class="badge badge-success">Enabled</span>' : '<span class="badge badge-muted">Disabled</span>' ?></td>
           <td><span class="badge <?= $sc ?>" data-live-badge="cr:<?= $cr['id'] ?>:status" data-current-status="<?= $cr['status'] ?>"><?= $cr['status'] ?></span></td>
           <td style="font-size:12px;color:var(--text-2)"><?= timeAgo($cr['uploaded_at']) ?></td>
           <td>
-            <button class="btn btn-secondary btn-sm" onclick="previewCreative('<?= htmlspecialchars($cr['id']) ?>', '<?= htmlspecialchars($cr['name']) ?>')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              View
-            </button>
+            <div style="display:flex;gap:5px;flex-wrap:wrap">
+              <button class="btn btn-secondary btn-sm" onclick="previewCreative('<?= htmlspecialchars($cr['id']) ?>', '<?= htmlspecialchars($cr['name']) ?>')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                View
+              </button>
+              <form method="POST" style="display:inline"
+                onsubmit="return confirm('Delete creative \'<?= htmlspecialchars(addslashes($cr['name'])) ?>\'? This cannot be undone.')">
+                <input type="hidden" name="delete_creative" value="1">
+                <input type="hidden" name="creative_id"    value="<?= htmlspecialchars($cr['id']) ?>">
+                <button type="submit" class="btn btn-danger btn-sm">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  Delete
+                </button>
+              </form>
+            </div>
           </td>
         </tr>
       <?php endforeach; ?>
@@ -157,7 +185,7 @@ $userCreatives = array_reverse(array_values(array_filter($creatives, fn($c) => $
       </div>
       <div class="alert alert-info" style="font-size:12.5px">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        Creative will be reviewed by admin before being available in campaigns.
+        Creative will be reviewed before being available in campaigns.
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button type="button" class="btn btn-secondary" onclick="closeModal('uploadModal')">Cancel</button>
@@ -196,13 +224,13 @@ $userCreatives = array_reverse(array_values(array_filter($creatives, fn($c) => $
 
 <script>
 const fileInput = document.getElementById('htmlFileInput');
-const zone = document.getElementById('uploadZone');
-const uzTitle = document.getElementById('uzTitle');
+const zone      = document.getElementById('uploadZone');
+const uzTitle   = document.getElementById('uzTitle');
 
 fileInput.addEventListener('change', function() {
   if (this.files[0]) { zone.classList.add('has-file'); uzTitle.textContent = this.files[0].name; }
 });
-zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
 zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
 zone.addEventListener('drop', e => {
   e.preventDefault(); zone.classList.remove('drag-over');
@@ -215,10 +243,10 @@ zone.addEventListener('drop', e => {
 
 function previewCreative(id, name) {
   const url = '/user/creatives.php?preview=' + encodeURIComponent(id);
-  document.getElementById('previewTitle').textContent = name;
-  document.getElementById('previewFrame').src = url;
-  document.getElementById('previewOpenBtn').href = url;
-  document.getElementById('previewUrlBar').textContent = name + '.html';
+  document.getElementById('previewTitle').textContent    = name;
+  document.getElementById('previewFrame').src            = url;
+  document.getElementById('previewOpenBtn').href         = url;
+  document.getElementById('previewUrlBar').textContent   = name + '.html';
   openModal('previewModal');
 }
 </script>
