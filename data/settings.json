@@ -1,0 +1,58 @@
+{
+    "countries": [
+        {
+            "code": "US",
+            "name": "United States"
+        },
+        {
+            "code": "UK",
+            "name": "United Kingdom"
+        },
+        {
+            "code": "CA",
+            "name": "Canada"
+        },
+        {
+            "code": "AU",
+            "name": "Australia"
+        },
+        {
+            "code": "DE",
+            "name": "Germany"
+        },
+        {
+            "code": "FR",
+            "name": "France"
+        },
+        {
+            "code": "NL",
+            "name": "Netherlands"
+        },
+        {
+            "code": "NZ",
+            "name": "New Zealand"
+        },
+        {
+            "code": "IE",
+            "name": "Ireland"
+        },
+        {
+            "code": "SE",
+            "name": "Sweden"
+        }
+    ],
+    "wallets": {
+        "BTC": {
+            "address": "bc1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "network": "Bitcoin"
+        },
+        "TRC20": {
+            "address": "TXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "network": "Tron TRC20 (USDT)"
+        },
+        "SOL": {
+            "address": "SoLxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "network": "Solana"
+        }
+    }
+}

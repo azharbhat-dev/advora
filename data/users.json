@@ -1,0 +1,11 @@
+[
+    {
+        "id": "USR-468E9366",
+        "username": "user",
+        "password": "$2y$12$ypFDKkkTlIHzgux98JIvjubLNWd98eeqeHjOEMhZZvE7o8v0akAC2",
+        "email": "",
+        "balance": 99,
+        "disabled": false,
+        "created_at": 1776500236
+    }
+]

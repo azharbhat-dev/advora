@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Azhar Muhammad Bhat - Software Developer</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230d1117'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='monospace' font-weight='bold' font-size='18' fill='%2358a6ff'%3EA%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Mona+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg-canvas:#0d1117;
+--bg-default:#161b22;
+--bg-subtle:#1c2128;
+--bg-inset:#010409;
+--border-default:#30363d;
+--border-muted:#21262d;
+--fg-default:#e6edf3;
+--fg-muted:#7d8590;
+--fg-subtle:#6e7681;
+--accent-fg:#58a6ff;
+--accent-emphasis:#1f6feb;
+--success-fg:#3fb950;
+--attention-fg:#d29922;
+--danger-fg:#f85149;
+--done-fg:#a371f7;
+--sponsors-fg:#db61a2;
+--open-fg:#3fb950;
+--closed-fg:#f85149;
+--btn-bg:#21262d;
+--btn-border:#363b42;
+--btn-hover-bg:#30363d;
+--header-bg:#010409;
+--counter-bg:rgba(110,118,129,0.4);
+--topicTag-bg:rgba(56,139,253,0.15);
+--contribution-0:#161b22;
+--contribution-1:#0e4429;
+--contribution-2:#006d32;
+--contribution-3:#26a641;
+--contribution-4:#39d353;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Mona Sans','Segoe UI',Helvetica,Arial,sans-serif;background:var(--bg-canvas);color:var(--fg-default);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--accent-fg);text-decoration:none}
+a:hover{text-decoration:underline}
+.header{background:var(--header-bg);border-bottom:1px solid var(--border-default);position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)}
+.header-inner{max-width:1280px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;gap:16px}
+.header-logo svg{fill:var(--fg-default)}
+.header-logo:hover svg{fill:var(--fg-muted)}
+.header-nav{display:flex;gap:4px;margin-left:8px;flex:1}
+.header-nav a{padding:6px 14px;border-radius:6px;font-size:14px;font-weight:500;color:var(--fg-default);transition:background .15s}
+.header-nav a:hover{background:var(--btn-bg);text-decoration:none}
+.header-nav a.active{font-weight:600;background:var(--btn-bg)}
+.header-nav .counter{background:var(--counter-bg);padding:1px 8px;border-radius:10px;font-size:12px;margin-left:4px;font-weight:600}
+.header-right{display:flex;align-items:center;gap:12px}
+.header-right .btn{display:inline-flex;align-items:center;gap:6px;padding:5px 16px;font-size:14px;font-weight:500;background:var(--btn-bg);border:1px solid var(--btn-border);border-radius:6px;color:var(--fg-default);cursor:pointer;transition:background .15s}
+.header-right .btn:hover{background:var(--btn-hover-bg);text-decoration:none}
+.header-right .btn-primary{background:var(--success-fg);border-color:rgba(63,185,80,.4);color:#fff}
+.header-right .btn-primary:hover{background:#2ea043}
+.mobile-menu-btn{display:none;background:none;border:none;color:var(--fg-default);cursor:pointer;padding:8px}
+.main{max-width:1280px;margin:0 auto;padding:32px 24px;display:flex;gap:32px}
+.sidebar{width:296px;flex-shrink:0}
+.content{flex:1;min-width:0}
+.avatar-wrap{position:relative;margin-bottom:16px}
+.avatar{width:296px;height:296px;border-radius:50%;border:1px solid var(--border-default);background:var(--bg-subtle);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.avatar svg{width:200px;height:200px}
+.status-badge{position:absolute;bottom:20px;right:20px;width:40px;height:40px;background:var(--bg-default);border:1px solid var(--border-default);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:default}
+.profile-name{font-size:24px;font-weight:700;line-height:1.25}
+.profile-handle{font-size:20px;font-weight:300;color:var(--fg-muted);margin-bottom:16px}
+.profile-bio{font-size:16px;margin-bottom:16px;color:var(--fg-default)}
+.btn-follow{width:100%;padding:5px 16px;font-size:14px;font-weight:500;background:var(--btn-bg);border:1px solid var(--btn-border);border-radius:6px;color:var(--fg-default);cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:16px}
+.btn-follow:hover{background:var(--btn-hover-bg);border-color:var(--fg-muted)}
+.profile-meta{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;font-size:14px;color:var(--fg-muted)}
+.profile-meta-item{display:flex;align-items:center;gap:8px}
+.profile-meta-item svg{flex-shrink:0;fill:var(--fg-muted)}
+.profile-meta-item a{color:var(--fg-muted)}
+.profile-meta-item a:hover{color:var(--accent-fg)}
+.social-links{display:flex;flex-direction:column;gap:6px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border-default)}
+.social-link{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--fg-muted);padding:2px 0}
+.social-link svg{flex-shrink:0;fill:var(--fg-muted)}
+.social-link a{color:var(--fg-muted)}
+.social-link a:hover{color:var(--accent-fg)}
+.followers-row{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--fg-muted);margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border-default)}
+.followers-row svg{fill:var(--fg-muted)}
+.followers-row strong{color:var(--fg-default);font-weight:600}
+.section-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-bottom:12px;color:var(--fg-default)}
+.section-title svg{fill:var(--fg-muted)}
+.tech-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px}
+.tech-tag{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:var(--topicTag-bg);color:var(--accent-fg);border-radius:20px;font-size:12px;font-weight:500;transition:background .15s;cursor:default}
+.tech-tag:hover{background:rgba(56,139,253,0.25)}
+.lang-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.lang-python{background:#3572A5}
+.lang-php{background:#4F5D95}
+.lang-js{background:#f1e05a}
+.lang-html{background:#e34c26}
+.lang-css{background:#563d7c}
+.lang-react{background:#61dafb}
+.lang-flask{background:#000}
+.lang-shell{background:#89e051}
+.underline-nav{display:flex;border-bottom:1px solid var(--border-default);margin-bottom:24px;overflow-x:auto;gap:0}
+.underline-nav a{padding:8px 16px;font-size:14px;color:var(--fg-muted);display:flex;align-items:center;gap:8px;border-bottom:2px solid transparent;white-space:nowrap;transition:border-color .15s,color .15s}
+.underline-nav a:hover{text-decoration:none;color:var(--fg-default);border-bottom-color:var(--border-muted)}
+.underline-nav a.active{color:var(--fg-default);font-weight:600;border-bottom-color:var(--danger-fg)}
+.underline-nav a svg{fill:var(--fg-muted)}
+.underline-nav a.active svg{fill:var(--fg-default)}
+.underline-nav .counter{background:var(--counter-bg);padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.pinned-heading{font-size:16px;color:var(--fg-muted);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.pinned-heading svg{fill:var(--fg-muted)}
+.pinned-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:32px}
+.repo-card{padding:16px;border:1px solid var(--border-default);border-radius:6px;background:var(--bg-default);display:flex;flex-direction:column;transition:border-color .2s}
+.repo-card:hover{border-color:var(--fg-subtle)}
+.repo-card-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.repo-card-header svg{flex-shrink:0;fill:var(--fg-muted)}
+.repo-card-name{font-size:14px;font-weight:600;color:var(--accent-fg)}
+.repo-card-name:hover{text-decoration:underline}
+.repo-card-visibility{font-size:12px;color:var(--fg-muted);border:1px solid var(--border-default);border-radius:20px;padding:0 7px;font-weight:500}
+.repo-card-desc{font-size:12px;color:var(--fg-muted);margin-bottom:16px;flex:1;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.repo-card-footer{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--fg-muted)}
+.repo-card-footer span{display:flex;align-items:center;gap:4px}
+.contribution-section{margin-bottom:32px}
+.contribution-heading{font-size:16px;color:var(--fg-muted);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.contribution-graph{border:1px solid var(--border-default);border-radius:6px;padding:16px;background:var(--bg-default);overflow-x:auto}
+.contrib-table{border-spacing:3px;border-collapse:separate}
+.contrib-table td{width:11px;height:11px;border-radius:2px;outline:1px solid rgba(27,31,35,.06);outline-offset:-1px}
+.contrib-legend{display:flex;align-items:center;gap:4px;margin-top:12px;font-size:12px;color:var(--fg-muted);justify-content:flex-end}
+.contrib-legend span{width:11px;height:11px;border-radius:2px;display:inline-block}
+.readme-section{border:1px solid var(--border-default);border-radius:6px;margin-bottom:32px;background:var(--bg-default)}
+.readme-header{padding:12px 16px;border-bottom:1px solid var(--border-default);display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.readme-header svg{fill:var(--fg-muted)}
+.readme-body{padding:24px 32px}
+.readme-body h2{font-size:24px;font-weight:700;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border-default)}
+.readme-body h3{font-size:18px;font-weight:600;margin:24px 0 12px}
+.readme-body p{margin-bottom:16px;color:var(--fg-muted);font-size:15px;line-height:1.7}
+.readme-body .highlight{color:var(--accent-fg);font-weight:600}
+.skills-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin:20px 0}
+.skill-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border-default);border-radius:6px;background:var(--bg-subtle);transition:border-color .2s,transform .15s}
+.skill-item:hover{border-color:var(--accent-fg);transform:translateY(-2px)}
+.skill-item svg{flex-shrink:0}
+.skill-item span{font-size:13px;font-weight:500;color:var(--fg-default)}
+.experience-item{padding:16px 0;border-bottom:1px solid var(--border-default)}
+.experience-item:last-child{border-bottom:none}
+.exp-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:6px}
+.exp-header svg{flex-shrink:0;fill:var(--fg-muted);margin-top:2px}
+.exp-title{font-size:15px;font-weight:600;color:var(--fg-default)}
+.exp-company{font-size:14px;color:var(--accent-fg)}
+.exp-date{font-size:13px;color:var(--fg-subtle)}
+.exp-desc{font-size:14px;color:var(--fg-muted);margin-top:6px;padding-left:28px}
+.projects-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:16px}
+.project-card{padding:20px;border:1px solid var(--border-default);border-radius:6px;background:var(--bg-default);transition:border-color .2s,transform .15s}
+.project-card:hover{border-color:var(--accent-fg);transform:translateY(-2px)}
+.project-card-title{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.project-card-title svg{fill:var(--fg-muted)}
+.project-card-title a{font-size:16px;font-weight:600;color:var(--accent-fg)}
+.project-card-desc{font-size:13px;color:var(--fg-muted);margin-bottom:12px;line-height:1.6}
+.project-card-tech{display:flex;flex-wrap:wrap;gap:6px}
+.project-card-tech span{font-size:11px;padding:2px 8px;background:var(--topicTag-bg);color:var(--accent-fg);border-radius:20px}
+.contact-section{border:1px solid var(--border-default);border-radius:6px;padding:24px;background:var(--bg-default);margin-bottom:32px}
+.contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:16px}
+.contact-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--border-default);border-radius:6px;background:var(--bg-subtle);transition:border-color .2s}
+.contact-item:hover{border-color:var(--accent-fg)}
+.contact-item svg{flex-shrink:0;fill:var(--fg-muted)}
+.contact-item div{display:flex;flex-direction:column}
+.contact-item .label{font-size:12px;color:var(--fg-subtle)}
+.contact-item .value{font-size:14px;font-weight:500;color:var(--accent-fg)}
+.footer{border-top:1px solid var(--border-default);padding:40px 24px;margin-top:40px}
+.footer-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.footer-logo svg{fill:var(--fg-subtle)}
+.footer-logo:hover svg{fill:var(--fg-muted)}
+.footer-links{display:flex;gap:16px;flex-wrap:wrap}
+.footer-links a{font-size:12px;color:var(--fg-subtle)}
+.footer-links a:hover{color:var(--accent-fg)}
+.footer-copy{font-size:12px;color:var(--fg-subtle)}
+.mobile-sidebar{display:none}
+@media(max-width:1012px){
+.pinned-grid,.projects-grid{grid-template-columns:1fr}
+.header-nav{display:none}
+.mobile-menu-btn{display:block}
+.main{flex-direction:column}
+.sidebar{width:100%;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.avatar-wrap{margin-bottom:0}
+.avatar{width:80px;height:80px}
+.avatar svg{width:56px;height:56px}
+.status-badge{width:24px;height:24px;font-size:12px;bottom:0;right:0}
+.sidebar-info{flex:1;min-width:200px}
+.profile-name{font-size:20px}
+.profile-handle{font-size:16px;margin-bottom:8px}
+.profile-bio{font-size:14px;margin-bottom:8px}
+.btn-follow{width:auto;padding:5px 24px}
+.sidebar-extra{width:100%;display:flex;flex-wrap:wrap;gap:24px}
+.sidebar-extra > div{flex:1;min-width:150px}
+.skills-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+.contribution-graph{overflow-x:auto}
+.readme-body{padding:16px}
+.footer-inner{flex-direction:column;align-items:center;text-align:center}
+}
+@media(max-width:600px){
+.header-inner{padding:0 16px}
+.main{padding:16px}
+.underline-nav{gap:0}
+.underline-nav a{padding:8px 10px;font-size:13px}
+.contact-grid{grid-template-columns:1fr}
+}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.animate-in{animation:fadeInUp .4s ease-out both}
+.delay-1{animation-delay:.05s}
+.delay-2{animation-delay:.1s}
+.delay-3{animation-delay:.15s}
+.delay-4{animation-delay:.2s}
+.delay-5{animation-delay:.25s}
+.delay-6{animation-delay:.3s}
+</style>
+</head>
+<body>
+
+<header class="header">
+<div class="header-inner">
+<a href="#" class="header-logo" aria-label="Home">
+<svg height="32" viewBox="0 0 16 16" width="32"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>
+</a>
+<nav class="header-nav">
+<a href="#overview" class="active">Overview</a>
+<a href="#repositories">Repositories <span class="counter">7</span></a>
+<a href="#projects-section">Projects</a>
+<a href="#contact-section">Contact</a>
+</nav>
+<button class="mobile-menu-btn" onclick="document.querySelector('.header-nav').classList.toggle('mobile-open')" aria-label="Menu">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<div class="header-right">
+<a href="mailto:admin@bytevault.cloud" class="btn btn-primary">
+<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.75 2h12.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25v-8.5C0 2.784.784 2 1.75 2ZM1.5 3.75v.736l6.5 3.9 6.5-3.9v-.736a.25.25 0 0 0-.25-.25H1.75a.25.25 0 0 0-.25.25Zm13 2.104-6.236 3.742a.5.5 0 0 1-.528 0L1.5 5.854v6.396c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V5.854Z"/></svg>
+Hire Me
+</a>
+</div>
+</div>
+</header>
+
+<style>
+.header-nav.mobile-open{display:flex!important;position:absolute;top:64px;left:0;right:0;background:var(--header-bg);flex-direction:column;padding:8px;border-bottom:1px solid var(--border-default);z-index:99}
+</style>
+
+<main class="main" id="overview">
+<aside class="sidebar">
+<div class="avatar-wrap animate-in">
+<div class="avatar">
+<svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="100" cy="100" r="98" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+<circle cx="100" cy="76" r="36" fill="#30363d"/>
+<ellipse cx="100" cy="160" rx="52" ry="40" fill="#30363d"/>
+<circle cx="88" cy="72" r="4" fill="#58a6ff"/>
+<circle cx="112" cy="72" r="4" fill="#58a6ff"/>
+<path d="M90 84 Q100 92 110 84" stroke="#58a6ff" stroke-width="2" fill="none" stroke-linecap="round"/>
+<rect x="72" y="130" width="56" height="4" rx="2" fill="#21262d"/>
+<rect x="80" y="140" width="40" height="3" rx="1.5" fill="#21262d"/>
+<rect x="85" y="148" width="30" height="3" rx="1.5" fill="#21262d"/>
+</svg>
+</div>
+<div class="status-badge" title="Focusing">
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#d29922" stroke-width="2"/><circle cx="8" cy="8" r="3" fill="#d29922"/></svg>
+</div>
+</div>
+
+<div class="sidebar-info">
+<h1 class="profile-name animate-in delay-1">Azhar Muhammad Bhat</h1>
+<p class="profile-handle animate-in delay-1">azharbhat-dev</p>
+<p class="profile-bio animate-in delay-2">Software Developer | Full-Stack Engineer | Co-founder at ThynkerLabs</p>
+
+<button class="btn-follow animate-in delay-2" onclick="window.open('https://github.com/azharbhat-dev','_blank')">
+<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+Follow on GitHub
+</button>
+</div>
+
+<div class="sidebar-extra">
+<div>
+<div class="profile-meta animate-in delay-3">
+<div class="profile-meta-item">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.75 16A1.75 1.75 0 0 1 0 14.25V1.75C0 .784.784 0 1.75 0h8.5C11.216 0 12 .784 12 1.75v12.5c0 .085-.006.168-.018.25h2.268a.25.25 0 0 0 .25-.25V8.285a.25.25 0 0 0-.111-.208l-1.055-.703a.749.749 0 1 1 .832-1.248l1.055.703c.487.325.777.871.777 1.456v5.965A1.75 1.75 0 0 1 14.25 16h-3.5a.766.766 0 0 1-.197-.026c-.099.017-.2.026-.303.026h-3a.75.75 0 0 1-.75-.75V14h-1v1.25a.75.75 0 0 1-.75.75h-3Zm-.25-1.75c0 .138.112.25.25.25H4v-1.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 .75.75v1.25h2.25a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25ZM3.75 6h.5a.75.75 0 0 1 0 1.5h-.5a.75.75 0 0 1 0-1.5ZM3 3.75A.75.75 0 0 1 3.75 3h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 3 3.75Zm4 3A.75.75 0 0 1 7.75 6h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 7 6.75ZM7.75 3h.5a.75.75 0 0 1 0 1.5h-.5a.75.75 0 0 1 0-1.5ZM3 9.75A.75.75 0 0 1 3.75 9h.5a.75.75 0 0 1 0 1.5h-.5A.75.75 0 0 1 3 9.75ZM7.75 9h.5a.75.75 0 0 1 0 1.5h-.5a.75.75 0 0 1 0-1.5Z"/></svg>
+<span>ThynkerLabs</span>
+</div>
+<div class="profile-meta-item">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="m12.596 11.596-3.535 3.536a1.5 1.5 0 0 1-2.122 0l-3.535-3.536a6.5 6.5 0 1 1 9.192 0ZM8 8.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg>
+<span>Srinagar, Kashmir, India</span>
+</div>
+<div class="profile-meta-item">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.75 2h12.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25v-8.5C0 2.784.784 2 1.75 2ZM1.5 3.75v.736l6.5 3.9 6.5-3.9v-.736a.25.25 0 0 0-.25-.25H1.75a.25.25 0 0 0-.25.25Zm13 2.104-6.236 3.742a.5.5 0 0 1-.528 0L1.5 5.854v6.396c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V5.854Z"/></svg>
+<a href="mailto:admin@bytevault.cloud">admin@bytevault.cloud</a>
+</div>
+<div class="profile-meta-item">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M7.775 3.275a.75.75 0 0 0 1.06 1.06l1.25-1.25a2 2 0 1 1 2.83 2.83l-2.5 2.5a2 2 0 0 1-2.83 0 .75.75 0 0 0-1.06 1.06 3.5 3.5 0 0 0 4.95 0l2.5-2.5a3.5 3.5 0 0 0-4.95-4.95l-1.25 1.25Zm-4.69 9.64a2 2 0 0 1 0-2.83l2.5-2.5a2 2 0 0 1 2.83 0 .75.75 0 0 0 1.06-1.06 3.5 3.5 0 0 0-4.95 0l-2.5 2.5a3.5 3.5 0 0 0 4.95 4.95l1.25-1.25a.75.75 0 0 0-1.06-1.06l-1.25 1.25a2 2 0 0 1-2.83 0Z"/></svg>
+<a href="https://azharbhat-dev.github.io" target="_blank">azharbhat-dev.github.io</a>
+</div>
+</div>
+
+<div class="social-links animate-in delay-3">
+<div class="social-link">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+<a href="https://github.com/azharbhat-dev/" target="_blank">github.com/azharbhat-dev</a>
+</div>
+<div class="social-link">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M12.225 12.225h-1.778V9.44c0-.664-.012-1.519-.925-1.519-.926 0-1.068.724-1.068 1.47v2.834H6.676V6.498h1.707v.783h.024c.348-.594.996-.95 1.684-.925 1.802 0 2.135 1.185 2.135 2.728l-.001 3.14ZM4.67 5.715a1.037 1.037 0 0 1-1.032-1.031c0-.566.466-1.032 1.032-1.032.566 0 1.031.466 1.032 1.032 0 .566-.466 1.032-1.032 1.032Zm.889 6.51h-1.78V6.498h1.78v5.727ZM13.11 2H2.885A.88.88 0 0 0 2 2.866v10.268a.88.88 0 0 0 .885.866h10.226a.882.882 0 0 0 .889-.866V2.865A.88.88 0 0 0 13.111 2Z"/></svg>
+<a href="https://www.linkedin.com/in/azhar-bhat-42a23217b" target="_blank">LinkedIn</a>
+</div>
+<div class="social-link">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 2.95 0 6.6c0 2.07 1.03 3.93 2.65 5.15-.1.58-.46 2.17-.53 2.5 0 0-.01.08.04.11.05.03.11.01.11.01.15-.02 1.76-1.16 2.46-1.7.73.21 1.5.33 2.27.33 4.42 0 8-2.95 8-6.6S12.42 0 8 0Z"/></svg>
+<a href="https://t.me/Nothazard" target="_blank">Telegram</a>
+</div>
+</div>
+
+<div class="followers-row animate-in delay-3">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 5.5a3.5 3.5 0 1 1 5.898 2.549 5.508 5.508 0 0 1 3.034 4.084.75.75 0 1 1-1.482.235 4 4 0 0 0-7.9 0 .75.75 0 0 1-1.482-.236A5.507 5.507 0 0 1 3.102 8.05 3.493 3.493 0 0 1 2 5.5ZM11 4a3.001 3.001 0 0 1 2.22 5.018 5.01 5.01 0 0 1 2.56 3.012.749.749 0 0 1-.885.954.752.752 0 0 1-.549-.514 3.507 3.507 0 0 0-2.522-2.372.75.75 0 0 1-.574-.73v-.352a.75.75 0 0 1 .416-.672A1.5 1.5 0 0 0 11 5.5.75.75 0 0 1 11 4Zm-5.5-.5a2 2 0 1 0-.001 3.999A2 2 0 0 0 5.5 3.5Z"/></svg>
+<span><strong>1</strong> follower</span>
+</div>
+</div>
+
+<div>
+<div class="section-title animate-in delay-4">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M7.823.177a.25.25 0 0 1 .354 0l2.175 2.175a.25.25 0 0 1-.177.427H8.5v3.496h3.496V4.825a.25.25 0 0 1 .427-.177l2.175 2.175a.25.25 0 0 1 0 .354l-2.175 2.175a.25.25 0 0 1-.427-.177V7.5H8.5v3.496h1.675a.25.25 0 0 1 .177.427l-2.175 2.175a.25.25 0 0 1-.354 0l-2.175-2.175a.25.25 0 0 1 .177-.427H7.5V7.5H4.004v1.675a.25.25 0 0 1-.427.177L1.402 7.177a.25.25 0 0 1 0-.354l2.175-2.175a.25.25 0 0 1 .427.177V6.5H7.5V3.004H5.825a.25.25 0 0 1-.177-.427L7.823.177Z"/></svg>
+Languages
+</div>
+<div class="tech-tags animate-in delay-4">
+<span class="tech-tag"><span class="lang-dot lang-python"></span>Python</span>
+<span class="tech-tag"><span class="lang-dot lang-php"></span>PHP</span>
+<span class="tech-tag"><span class="lang-dot lang-js"></span>JavaScript</span>
+<span class="tech-tag"><span class="lang-dot lang-html"></span>HTML</span>
+<span class="tech-tag"><span class="lang-dot lang-css"></span>CSS</span>
+<span class="tech-tag"><span class="lang-dot lang-react"></span>React Native</span>
+<span class="tech-tag"><span class="lang-dot lang-flask"></span>Flask</span>
+<span class="tech-tag"><span class="lang-dot lang-shell"></span>Shell</span>
+</div>
+</div>
+</div>
+</aside>
+
+<div class="content">
+<nav class="underline-nav animate-in">
+<a href="#overview" class="active" data-tab="overview">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.743 3.743 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"/></svg>
+Overview
+</a>
+<a href="#repositories" data-tab="repos">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z"/></svg>
+Repositories <span class="counter">7</span>
+</a>
+<a href="#projects-section" data-tab="projects">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.75 0h12.5C15.216 0 16 .784 16 1.75v12.5A1.75 1.75 0 0 1 14.25 16H1.75A1.75 1.75 0 0 1 0 14.25V1.75C0 .784.784 0 1.75 0ZM1.5 1.75v12.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25H1.75a.25.25 0 0 0-.25.25ZM11.75 3a.75.75 0 0 1 .75.75v7.5a.75.75 0 0 1-1.5 0v-7.5a.75.75 0 0 1 .75-.75Zm-8.25.75a.75.75 0 0 1 1.5 0v5.5a.75.75 0 0 1-1.5 0ZM8 3a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 3Z"/></svg>
+Projects
+</a>
+<a href="#contact-section" data-tab="contact">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.75 2h12.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25v-8.5C0 2.784.784 2 1.75 2ZM1.5 3.75v.736l6.5 3.9 6.5-3.9v-.736a.25.25 0 0 0-.25-.25H1.75a.25.25 0 0 0-.25.25Zm13 2.104-6.236 3.742a.5.5 0 0 1-.528 0L1.5 5.854v6.396c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V5.854Z"/></svg>
+Contact
+</a>
+</nav>
+
+<div class="tab-content active" id="tab-overview">
+
+<div class="pinned-heading animate-in delay-1">
+<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M4.456.734a1.75 1.75 0 0 1 2.826.504l.613 1.327a3.081 3.081 0 0 0 2.084 1.707l2.454.584c1.332.317 1.8 1.972.832 2.94L11.06 10l.16.312a1.75 1.75 0 0 1-.263 1.958l-2.07 2.39A.75.75 0 0 1 7.69 14l.001-3.275-2.863-.57a.75.75 0 0 1-.399-1.236l2.46-2.95L5.97 4.27a3.12 3.12 0 0 0-1.514-1.272L4.456.734Z"/></svg>
+Pinned
+</div>
+
+<div class="pinned-grid" id="repositories">
+<div class="repo-card animate-in delay-1">
+<div class="repo-card-header">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z"/></svg>
+<a class="repo-card-name" href="https://github.com/azharbhat-dev/flask-weather-app" target="_blank">flask-weather-app</a>
+<span class="repo-card-visibility">Public</span>
+</div>
+<p class="repo-card-desc">A Flask-based weather application with real-time data fetching and clean UI</p>
+<div class="repo-card-footer">
+<span><span class="lang-dot lang-python"></span> Python</span>
+</div>
+</div>
+
+<div class="repo-card animate-in delay-2">
+<div class="repo-card-header">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z"/></svg>
+<a class="repo-card-name" href="https://github.com/azharbhat-dev/hex_htmltoimg" target="_blank">hex_htmltoimg</a>
+<span class="repo-card-visibility">Public</span>
+</div>
+<p class="repo-card-desc">Transforms HTML into images with ease. Enables dynamic content replacement, custom image sizing, and unique filename generation.</p>
+<div class="repo-card-footer">
+<span><span class="lang-dot lang-python"></span> Python</span>
+</div>
+</div>
+
+<div class="repo-card animate-in delay-3">
+<div class="repo-card-header">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z"/></svg>
+<a class="repo-card-name" href="https://github.com/azharbhat-dev/pdfmerge" target="_blank">pdfmerge</a>
+<span class="repo-card-visibility">Public</span>
+</div>
+<p class="repo-card-desc">A Python utility for merging multiple PDF documents into a single file with ease</p>
+<div class="repo-card-footer">
+<span><span class="lang-dot lang-python"></span> Python</span>
+</div>
+</div>
+
+<div class="repo-card animate-in delay-4">
+<div class="repo-card-header">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z"/></svg>
+<a class="repo-card-name" href="https://github.com/azharbhat-dev/HexLLC.github.io" target="_blank">HexLLC.github.io</a>
+<span class="repo-card-visibility">Public</span>
+</div>
+<p class="repo-card-desc">HexLLC company website - business landing page</p>
+<div class="repo-card-footer">
+<span><span class="lang-dot lang-html"></span> HTML</span>
+</div>
+</div>
+
+<div class="repo-card animate-in delay-5">
+<div class="repo-card-header">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z"/></svg>
+<a class="repo-card-name" href="https://github.com/azharbhat-dev/TurbologoDownloader" target="_blank">TurbologoDownloader</a>
+<span class="repo-card-visibility">Public</span>
+</div>
+<p class="repo-card-desc">Script to download logos without watermarks from turbologo.ru</p>
+<div class="repo-card-footer">
+<span><span class="lang-dot lang-js"></span> JavaScript</span>
+</div>
+</div>
+
+<div class="repo-card animate-in delay-6">
+<div class="repo-card-header">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z"/></svg>
+<a class="repo-card-name" href="https://github.com/azharbhat-dev/azharbhat-dev.github.io" target="_blank">azharbhat-dev.github.io</a>
+<span class="repo-card-visibility">Public</span>
+</div>
+<p class="repo-card-desc">Personal portfolio website - GitHub Pages deployment</p>
+<div class="repo-card-footer">
+<span><span class="lang-dot lang-html"></span> HTML</span>
+</div>
+</div>
+</div>
+
+<div class="contribution-section animate-in delay-3">
+<div class="contribution-heading">
+<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8.5.75a.75.75 0 0 0-1.5 0v5.19L4.391 3.33a.75.75 0 1 0-1.06 1.061L5.939 7H.75a.75.75 0 0 0 0 1.5h5.19l-2.61 2.609a.75.75 0 1 0 1.061 1.06L7 9.561v5.189a.75.75 0 0 0 1.5 0V9.56l2.609 2.61a.75.75 0 1 0 1.06-1.061L9.561 8.5h5.189a.75.75 0 0 0 0-1.5H9.56l2.61-2.609a.75.75 0 0 0-1.061-1.06L8.5 5.939V.75Z"/></svg>
+Contribution Activity
+</div>
+<div class="contribution-graph">
+<table class="contrib-table" id="contrib-graph"></table>
+<div class="contrib-legend">
+Less
+<span style="background:var(--contribution-0)"></span>
+<span style="background:var(--contribution-1)"></span>
+<span style="background:var(--contribution-2)"></span>
+<span style="background:var(--contribution-3)"></span>
+<span style="background:var(--contribution-4)"></span>
+More
+</div>
+</div>
+</div>
+
+<div class="readme-section animate-in delay-4">
+<div class="readme-header">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.743 3.743 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"/></svg>
+README.md
+</div>
+<div class="readme-body">
+<h2>About Me</h2>
+<p>I'm <span class="highlight">Azhar Muhammad Bhat</span>, a software developer and co-founder of <span class="highlight">ThynkerLabs</span>, an IT agency based in Srinagar, Kashmir. I specialize in building full-stack web applications, backend systems, and deployment infrastructure.</p>
+<p>Currently finishing my BCA from St. Soldier Management & Technical Institute (affiliated with LPU). My focus areas include Python backend development with Flask, PHP web applications, and modern frontend tooling.</p>
+
+<h3>Tech Stack</h3>
+<div class="skills-grid">
+<div class="skill-item">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="#3572A5"><path d="M14.31.18l.9.2.73.26.59.3.45.32.34.34.25.34.16.33.1.3.04.26.02.2-.01.13V8.5l-.05.63-.13.55-.21.46-.26.38-.3.31-.33.25-.35.19-.35.14-.33.1-.3.07-.26.04-.21.02H8.83l-.69.05-.59.14-.5.22-.41.27-.33.32-.27.35-.2.36-.15.37-.1.35-.07.32-.04.27-.02.21v3.06H3.23l-.21-.03-.28-.07-.32-.12-.35-.18-.36-.26-.36-.36-.35-.46-.32-.59-.28-.73-.21-.88-.14-1.05-.05-1.23.06-1.22.16-1.04.24-.87.32-.71.36-.57.4-.44.42-.33.42-.24.4-.16.36-.1.32-.05.24-.01h.16l.06.01h8.16v-.83H6.18l-.01-2.75-.02-.37.05-.34.11-.31.17-.28.25-.26.31-.23.38-.2.44-.18.51-.15.58-.12.64-.1.71-.06.77-.04.84-.02 1.27.05zm-6.3 1.98l-.23.33-.08.41.08.41.23.34.33.22.41.09.41-.09.33-.22.23-.34.08-.41-.08-.41-.23-.33-.33-.22-.41-.09-.41.09zm13.09 3.95l.28.06.32.12.35.18.36.27.36.35.35.47.32.59.28.73.21.88.14 1.04.05 1.23-.06 1.23-.16 1.04-.24.86-.32.71-.36.57-.4.45-.42.33-.42.24-.4.16-.36.09-.32.05-.24.02-.16-.01h-8.22v.82h5.84l.01 2.76.02.36-.05.34-.11.31-.17.29-.25.25-.31.24-.38.2-.44.17-.51.15-.58.13-.64.09-.71.07-.77.04-.84.01-1.27-.04-1.07-.14-.9-.2-.73-.25-.59-.3-.45-.33-.34-.34-.25-.34-.16-.33-.1-.3-.04-.25-.02-.2.01-.13v-5.34l.05-.64.13-.54.21-.46.26-.38.3-.32.33-.24.35-.2.35-.14.33-.1.3-.06.26-.04.21-.02.13-.01h5.84l.69-.05.59-.14.5-.21.41-.28.33-.32.27-.35.2-.36.15-.36.1-.35.07-.32.04-.28.02-.21V6.07h2.09l.14.01zm-6.47 14.25l-.23.33-.08.41.08.41.23.33.33.23.41.08.41-.08.33-.23.23-.33.08-.41-.08-.41-.23-.33-.33-.23-.41-.08-.41.08z"/></svg>
+<span>Python</span>
+</div>
+<div class="skill-item">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="#e34c26"><path d="M1.5 0h21l-1.91 21.563L11.977 24l-8.564-2.438L1.5 0zm7.031 9.75l-.232-2.718 10.059.003.071-.757.541-6.028H5.879l.14 1.528h8.334l-.282 2.972H6.159l.137 1.5h7.3l-.397 4.5-1.822.5-1.823-.5-.118-1.5H8.029l.228 3.272L11.377 13l3.272-.891.372-4.359H8.531z"/></svg>
+<span>HTML / CSS</span>
+</div>
+<div class="skill-item">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="#f1e05a"><path d="M0 0h24v24H0V0zm22.034 18.276c-.175-1.095-.888-2.015-3.003-2.873-.736-.345-1.554-.585-1.797-1.14-.091-.33-.105-.51-.046-.705.15-.646.915-.84 1.515-.66.39.12.75.42.976.9 1.034-.676 1.034-.676 1.755-1.125-.27-.42-.405-.6-.586-.78-.63-.705-1.469-1.065-2.834-1.034l-.705.089c-.676.165-1.32.525-1.71 1.005-1.14 1.291-.811 3.541.569 4.471 1.365 1.02 3.361 1.244 3.616 2.205.24 1.17-.87 1.545-1.966 1.41-.811-.18-1.26-.586-1.755-1.336l-1.83 1.051c.21.48.45.689.81 1.109 1.74 1.756 6.09 1.666 6.871-1.004.029-.09.24-.705.074-1.65l.046.067zm-8.983-7.245h-2.248c0 1.938-.009 3.864-.009 5.805 0 1.232.063 2.363-.138 2.711-.33.689-1.18.601-1.566.48-.396-.196-.597-.466-.83-.855-.063-.105-.11-.196-.127-.196l-1.825 1.125c.305.63.75 1.172 1.324 1.517.855.51 2.004.675 3.207.405.783-.226 1.458-.691 1.811-1.411.51-.93.402-2.07.397-3.346.012-2.054 0-4.109 0-6.179l.004-.056z"/></svg>
+<span>JavaScript</span>
+</div>
+<div class="skill-item">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="#4F5D95"><path d="M7.01 10.207h-.944l-.515 2.648h.838c.556 0 .97-.105 1.242-.314.272-.21.455-.559.55-1.049.092-.47.05-.802-.124-.995-.175-.193-.523-.29-1.047-.29zM0 0v24h24V0H0zm14.406 6.151c.378-.183.7-.27.964-.27.228 0 .41.036.546.107.135.071.23.183.284.336.055.153.07.348.044.584a3.41 3.41 0 0 1-.111.531l-.769 3.288c-.044.176-.118.408-.222.697-.105.289-.262.558-.47.807-.209.249-.462.442-.76.579-.299.137-.653.206-1.063.206-.254 0-.478-.036-.672-.107-.193-.071-.345-.182-.455-.331a.978.978 0 0 1-.163-.49 2.1 2.1 0 0 1 .065-.624l.769-3.288c.068-.272.16-.512.276-.719.116-.208.27-.397.46-.57a2.24 2.24 0 0 1 .682-.439l.395-.157zm-3.834-2.12l-.628 3.288h2.226l.628-3.288h1.792l-1.855 9.639h-1.792l.827-4.36H9.546l-.827 4.36H6.927l1.855-9.639h1.79zm6.327 0h1.792l-1.855 9.639h-1.792L16.9 4.031zm2.483 0h5.166l-.35 1.79h-3.374l-.389 2.017h3.107l-.345 1.79h-3.107l-.438 2.25h3.492l-.349 1.792H16.73l1.852-9.639z"/></svg>
+<span>PHP</span>
+</div>
+<div class="skill-item">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="#000"><circle cx="12" cy="12" r="11" stroke="#e6edf3" stroke-width="1" fill="none"/><path d="M7.5 15.5c0-1 .5-1.5 1.5-1.5h6c1 0 1.5.5 1.5 1.5M12 8v4m-2.5-2l2.5 2 2.5-2" stroke="#e6edf3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+<span>Flask</span>
+</div>
+<div class="skill-item">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="#61dafb"><path d="M14.23 12.004a2.236 2.236 0 0 1-2.235 2.236 2.236 2.236 0 0 1-2.236-2.236 2.236 2.236 0 0 1 2.235-2.236 2.236 2.236 0 0 1 2.236 2.236zm2.648-10.69c-1.346 0-3.107.96-4.888 2.622-1.78-1.653-3.542-2.602-4.887-2.602-.31 0-.594.063-.842.18C5.25 2.097 4.94 3.633 5.26 5.8a16.76 16.76 0 0 0-2.193 3.138C1.696 11.263 1.324 13.523 2.3 14.108c.326.197.734.272 1.2.272 1.346 0 3.107-.96 4.888-2.624 1.78 1.654 3.542 2.603 4.887 2.603.31 0 .594-.063.842-.18 1.012-.584 1.322-2.12 1.003-4.287a16.76 16.76 0 0 0 2.193-3.138c1.372-2.325 1.743-4.585.767-5.17a1.564 1.564 0 0 0-.842-.18z"/></svg>
+<span>React Native</span>
+</div>
+<div class="skill-item">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="3" stroke="#7d8590" stroke-width="1.5"/><path d="M7 8h10M7 12h7M7 16h4" stroke="#58a6ff" stroke-width="1.5" stroke-linecap="round"/></svg>
+<span>Google Ads</span>
+</div>
+<div class="skill-item">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10z" stroke="#3fb950" stroke-width="1.5"/><path d="M12 6v6l4 2" stroke="#3fb950" stroke-width="1.5" stroke-linecap="round"/></svg>
+<span>SEO</span>
+</div>
+<div class="skill-item">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 19h16M4 15l4-6 4 4 4-8 4 6" stroke="#d29922" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<span>Digital Mktg</span>
+</div>
+<div class="skill-item">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#a371f7" stroke-width="1.5"/><path d="M8 12h8M12 8v8" stroke="#a371f7" stroke-width="1.5" stroke-linecap="round"/></svg>
+<span>DigitalOcean</span>
+</div>
+<div class="skill-item">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#db61a2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<span>Hosting</span>
+</div>
+<div class="skill-item">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" stroke="#e6edf3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<span>Git</span>
+</div>
+</div>
+
+<h3>Experience</h3>
+<div class="experience-item">
+<div class="exp-header">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.75 16A1.75 1.75 0 0 1 0 14.25V1.75C0 .784.784 0 1.75 0h8.5C11.216 0 12 .784 12 1.75v12.5c0 .085-.006.168-.018.25h2.268a.25.25 0 0 0 .25-.25V8.285a.25.25 0 0 0-.111-.208l-1.055-.703a.749.749 0 1 1 .832-1.248l1.055.703c.487.325.777.871.777 1.456v5.965A1.75 1.75 0 0 1 14.25 16h-3.5a.766.766 0 0 1-.197-.026c-.099.017-.2.026-.303.026h-3a.75.75 0 0 1-.75-.75V14h-1v1.25a.75.75 0 0 1-.75.75h-3Z"/></svg>
+<div>
+<div class="exp-title">Co-founder & Full-Stack Developer</div>
+<div class="exp-company">ThynkerLabs - Srinagar, Kashmir</div>
+<div class="exp-date">2024 - Present</div>
+</div>
+</div>
+<p class="exp-desc">Leading a multi-service IT agency offering web development, SEO, Google Ads management, cloud deployments, and digital marketing solutions.</p>
+</div>
+<div class="experience-item">
+<div class="exp-header">
+<svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.75 16A1.75 1.75 0 0 1 0 14.25V1.75C0 .784.784 0 1.75 0h8.5C11.216 0 12 .784 12 1.75v12.5c0 .085-.006.168-.018.25h2.268a.25.25 0 0 0 .25-.25V8.285a.25.25 0 0 0-.111-.208l-1.055-.703a.749.749 0 1 1 .832-1.248l1.055.703c.487.325.777.871.777 1.456v5.965A1.75 1.75 0 0 1 14.25 16h-3.5a.766.766 0 0 1-.197-.026c-.099.017-.2.026-.303.026h-3a.75.75 0 0 1-.75-.75V14h-1v1.25a.75.75 0 0 1-.75.75h-3Z"/></svg>
+<div>
+<div class="exp-title">Software Developer</div>
+<div class="exp-company">Molly IT Solutions</div>
+<div class="exp-date">2022 - 2024</div>
+</div>
+</div>
+<p class="exp-desc">Developed web applications, managed hosting infrastructure, built lead generation funnels, and handled Google Ads campaigns for clients.</p>
+</div>
+</div>
+</div>
+</div>
+
+<div class="tab-content" id="tab-projects">
+<h3 style="margin-bottom:16px;font-size:16px;color:var(--fg-muted)" id="projects-section">Featured Projects</h3>
+<div class="projects-grid">
+<div class="project-card">
+<div class="project-card-title">
+<svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Z"/></svg>
+<a href="https://hexhost.cloud" target="_blank">HexHost</a>
+</div>
+<p class="project-card-desc">Static site deployment platform with credit system, Telegram bot administration, WebSocket real-time dashboard, CodeMirror file manager, and Surge.sh CDN backend.</p>
+<div class="project-card-tech">
+<span>Python</span><span>Flask</span><span>PHP</span><span>WebSocket</span><span>DigitalOcean</span>
+</div>
+</div>
+<div class="project-card">
+<div class="project-card-title">
+<svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Z"/></svg>
+<a href="#">hex_htmltoimg</a>
+</div>
+<p class="project-card-desc">Python library that transforms HTML into images with dynamic content replacement, custom sizing, and unique filename generation for developers.</p>
+<div class="project-card-tech">
+<span>Python</span><span>PIL</span><span>HTML</span>
+</div>
+</div>
+<div class="project-card">
+<div class="project-card-title">
+<svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Z"/></svg>
+<a href="#">ThynkerLabs</a>
+</div>
+<p class="project-card-desc">Multi-service IT agency website with service pages, blog content, Google Ads integration, and comprehensive digital marketing solutions.</p>
+<div class="project-card-tech">
+<span>HTML</span><span>CSS</span><span>JavaScript</span><span>SEO</span>
+</div>
+</div>
+<div class="project-card">
+<div class="project-card-title">
+<svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Z"/></svg>
+<a href="#">Flask Weather App</a>
+</div>
+<p class="project-card-desc">Real-time weather application built with Flask, featuring clean UI, API integration, and responsive design across all devices.</p>
+<div class="project-card-tech">
+<span>Python</span><span>Flask</span><span>API</span><span>HTML/CSS</span>
+</div>
+</div>
+</div>
+</div>
+
+<div class="tab-content" id="tab-contact">
+<div class="contact-section" id="contact-section">
+<h3 style="font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px">
+<svg width="20" height="20" viewBox="0 0 16 16" fill="var(--fg-muted)"><path d="M1.75 2h12.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25v-8.5C0 2.784.784 2 1.75 2ZM1.5 3.75v.736l6.5 3.9 6.5-3.9v-.736a.25.25 0 0 0-.25-.25H1.75a.25.25 0 0 0-.25.25Zm13 2.104-6.236 3.742a.5.5 0 0 1-.528 0L1.5 5.854v6.396c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V5.854Z"/></svg>
+Get in Touch
+</h3>
+<div class="contact-grid">
+<a href="mailto:admin@bytevault.cloud" class="contact-item" style="text-decoration:none">
+<svg width="20" height="20" viewBox="0 0 16 16"><path d="M1.75 2h12.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25v-8.5C0 2.784.784 2 1.75 2ZM1.5 3.75v.736l6.5 3.9 6.5-3.9v-.736a.25.25 0 0 0-.25-.25H1.75a.25.25 0 0 0-.25.25Zm13 2.104-6.236 3.742a.5.5 0 0 1-.528 0L1.5 5.854v6.396c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V5.854Z"/></svg>
+<div>
+<span class="label">Email</span>
+<span class="value">admin@bytevault.cloud</span>
+</div>
+</a>
+<a href="https://github.com/azharbhat-dev/" target="_blank" class="contact-item" style="text-decoration:none">
+<svg width="20" height="20" viewBox="0 0 16 16"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+<div>
+<span class="label">GitHub</span>
+<span class="value">azharbhat-dev</span>
+</div>
+</a>
+<a href="https://www.linkedin.com/in/azhar-bhat-42a23217b" target="_blank" class="contact-item" style="text-decoration:none">
+<svg width="20" height="20" viewBox="0 0 16 16"><path d="M12.225 12.225h-1.778V9.44c0-.664-.012-1.519-.925-1.519-.926 0-1.068.724-1.068 1.47v2.834H6.676V6.498h1.707v.783h.024c.348-.594.996-.95 1.684-.925 1.802 0 2.135 1.185 2.135 2.728l-.001 3.14ZM4.67 5.715a1.037 1.037 0 0 1-1.032-1.031c0-.566.466-1.032 1.032-1.032.566 0 1.031.466 1.032 1.032 0 .566-.466 1.032-1.032 1.032Zm.889 6.51h-1.78V6.498h1.78v5.727ZM13.11 2H2.885A.88.88 0 0 0 2 2.866v10.268a.88.88 0 0 0 .885.866h10.226a.882.882 0 0 0 .889-.866V2.865A.88.88 0 0 0 13.111 2Z"/></svg>
+<div>
+<span class="label">LinkedIn</span>
+<span class="value">Azhar Bhat</span>
+</div>
+</a>
+<a href="https://t.me/Nothazard" target="_blank" class="contact-item" style="text-decoration:none">
+<svg width="20" height="20" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 2.95 0 6.6c0 2.07 1.03 3.93 2.65 5.15-.1.58-.46 2.17-.53 2.5 0 0-.01.08.04.11.05.03.11.01.11.01.15-.02 1.76-1.16 2.46-1.7.73.21 1.5.33 2.27.33 4.42 0 8-2.95 8-6.6S12.42 0 8 0Z"/></svg>
+<div>
+<span class="label">Telegram</span>
+<span class="value">@Nothazard</span>
+</div>
+</a>
+<a href="https://azharbhat-dev.github.io" target="_blank" class="contact-item" style="text-decoration:none">
+<svg width="20" height="20" viewBox="0 0 16 16"><path d="M7.775 3.275a.75.75 0 0 0 1.06 1.06l1.25-1.25a2 2 0 1 1 2.83 2.83l-2.5 2.5a2 2 0 0 1-2.83 0 .75.75 0 0 0-1.06 1.06 3.5 3.5 0 0 0 4.95 0l2.5-2.5a3.5 3.5 0 0 0-4.95-4.95l-1.25 1.25Zm-4.69 9.64a2 2 0 0 1 0-2.83l2.5-2.5a2 2 0 0 1 2.83 0 .75.75 0 0 0 1.06-1.06 3.5 3.5 0 0 0-4.95 0l-2.5 2.5a3.5 3.5 0 0 0 4.95 4.95l1.25-1.25a.75.75 0 0 0-1.06-1.06l-1.25 1.25a2 2 0 0 1-2.83 0Z"/></svg>
+<div>
+<span class="label">Website</span>
+<span class="value">azharbhat-dev.github.io</span>
+</div>
+</a>
+<a href="https://hexhost.cloud" target="_blank" class="contact-item" style="text-decoration:none">
+<svg width="20" height="20" viewBox="0 0 16 16"><path d="M1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25V2.75C0 1.784.784 1 1.75 1Zm12.5 1.5H1.75a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM3 4.75a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 3 4.75Z"/></svg>
+<div>
+<span class="label">Product</span>
+<span class="value">hexhost.cloud</span>
+</div>
+</a>
+</div>
+</div>
+</div>
+
+</div>
+</main>
+
+<footer class="footer">
+<div class="footer-inner">
+<a href="#" class="footer-logo">
+<svg height="24" viewBox="0 0 16 16" width="24"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+</a>
+<p class="footer-copy">2026 Azhar Muhammad Bhat. Built with pure HTML, CSS & JS.</p>
+<div class="footer-links">
+<a href="mailto:admin@bytevault.cloud">Contact</a>
+<a href="https://github.com/azharbhat-dev/" target="_blank">GitHub</a>
+<a href="https://www.linkedin.com/in/azhar-bhat-42a23217b" target="_blank">LinkedIn</a>
+<a href="https://hexhost.cloud" target="_blank">HexHost</a>
+<a href="https://t.me/Nothazard" target="_blank">Telegram</a>
+</div>
+</div>
+</footer>
+
+<script>
+(function(){
+var graph=document.getElementById('contrib-graph');
+var weeks=52,days=7;
+var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var seed=42;
+function rand(){seed=(seed*16807+0)%2147483647;return(seed%100)/100}
+var html='<tbody>';
+for(var d=0;d<days;d++){
+html+='<tr>';
+for(var w=0;w<weeks;w++){
+var r=rand();
+var lvl=r<0.35?0:r<0.55?1:r<0.72?2:r<0.88?3:4;
+var colors=['var(--contribution-0)','var(--contribution-1)','var(--contribution-2)','var(--contribution-3)','var(--contribution-4)'];
+html+='<td style="background:'+colors[lvl]+'" title="contributions"></td>';
+}
+html+='</tr>';
+}
+html+='</tbody>';
+graph.innerHTML=html;
+})();
+
+document.querySelectorAll('.underline-nav a').forEach(function(link){
+link.addEventListener('click',function(e){
+e.preventDefault();
+document.querySelectorAll('.underline-nav a').forEach(function(l){l.classList.remove('active')});
+this.classList.add('active');
+document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active')});
+var tab=this.getAttribute('data-tab');
+if(tab==='overview')document.getElementById('tab-overview').classList.add('active');
+else if(tab==='repos')document.getElementById('tab-overview').classList.add('active');
+else if(tab==='projects'){document.getElementById('tab-projects').classList.add('active');document.getElementById('tab-overview').classList.add('active')}
+else if(tab==='contact'){document.getElementById('tab-contact').classList.add('active');document.getElementById('tab-overview').classList.add('active')}
+var href=this.getAttribute('href');
+if(href&&href.startsWith('#')){
+var target=document.querySelector(href);
+if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+}
+});
+});
+
+document.querySelectorAll('.header-nav a').forEach(function(link){
+link.addEventListener('click',function(e){
+e.preventDefault();
+document.querySelectorAll('.header-nav a').forEach(function(l){l.classList.remove('active')});
+this.classList.add('active');
+var href=this.getAttribute('href');
+if(href&&href.startsWith('#')){
+var target=document.querySelector(href);
+if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+}
+var nav=document.querySelector('.header-nav');
+if(nav.classList.contains('mobile-open'))nav.classList.remove('mobile-open');
+});
+});
+</script>
+</body>
+</html>
