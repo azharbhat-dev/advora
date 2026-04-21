@@ -1,1 +1,13 @@
-[]
+[
+    {
+        "id": "CR-73137342",
+        "user_id": "USR-F7F6F7EB",
+        "name": "camp1",
+        "filename": "index.html",
+        "stored_file": "CR-73137342.html",
+        "file_size": 31370,
+        "track_url": true,
+        "status": "approved",
+        "uploaded_at": 1776806326
+    }
+]

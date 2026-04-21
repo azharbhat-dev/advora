@@ -1,11 +1,12 @@
 [
     {
-        "id": "USR-468E9366",
-        "username": "user",
-        "password": "$2y$12$ypFDKkkTlIHzgux98JIvjubLNWd98eeqeHjOEMhZZvE7o8v0akAC2",
-        "email": "",
-        "balance": 99,
+        "id": "USR-F7F6F7EB",
+        "username": "hex",
+        "password": "$2y$12$NyKIQatxv7QYIe3bl6/x4.wNP1AavqZAvrLepLuMMrHcXHARtIkTS",
+        "email": "hex123@gmail.com",
+        "balance": 212.23000000000002,
+        "account_type": "expert",
         "disabled": false,
-        "created_at": 1776500236
+        "created_at": 1776806299
     }
 ]

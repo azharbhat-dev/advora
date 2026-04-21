@@ -1,11 +1,11 @@
 [
     {
-        "user_id": "USR-468E9366",
-        "campaign_id": "CMP-F14C3103",
-        "date": "2026-04-19",
-        "impressions": 10,
-        "clicks": 2,
-        "good_hits": 1,
-        "spent": 1
+        "user_id": "USR-F7F6F7EB",
+        "campaign_id": "CMP-DF6566B1",
+        "date": "2026-04-21",
+        "impressions": 100,
+        "clicks": 1,
+        "good_hits": 2,
+        "spent": 2
     }
 ]

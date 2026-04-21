@@ -1,0 +1,83 @@
+[
+    {
+        "id": "N-8DBB4CDC",
+        "user_id": "USR-F7F6F7EB",
+        "type": "creative_approved",
+        "title": "Creative Approved",
+        "message": "Your creative \"camp1\" has been approved and is ready to use in campaigns.",
+        "read": false,
+        "created_at": 1776806341
+    },
+    {
+        "id": "N-B649C27D",
+        "user_id": "USR-F7F6F7EB",
+        "type": "topup_approved",
+        "title": "Deposit Submitted",
+        "message": "Your deposit of $100.00 via TRC20 is under review.",
+        "read": false,
+        "created_at": 1776806399
+    },
+    {
+        "id": "N-D60F1953",
+        "user_id": "USR-F7F6F7EB",
+        "type": "topup_approved",
+        "title": "Deposit Approved",
+        "message": "$96.50 has been added to your balance.",
+        "read": false,
+        "created_at": 1776806431
+    },
+    {
+        "id": "N-E30EC7FC",
+        "user_id": "USR-F7F6F7EB",
+        "type": "campaign_approved",
+        "title": "Campaign Approved",
+        "message": "Your campaign \"camp1\" has been approved and is now live.",
+        "read": false,
+        "created_at": 1776806504
+    },
+    {
+        "id": "N-9FDC2943",
+        "user_id": "USR-F7F6F7EB",
+        "type": "topup_approved",
+        "title": "Deposit Submitted",
+        "message": "Your deposit of $100.00 via TRC20 is under review.",
+        "read": false,
+        "created_at": 1776808380
+    },
+    {
+        "id": "N-3392894D",
+        "user_id": "USR-F7F6F7EB",
+        "type": "topup_rejected",
+        "title": "Deposit Declined",
+        "message": "Your deposit of $100.00 was not approved. Please contact support.",
+        "read": false,
+        "created_at": 1776808497
+    },
+    {
+        "id": "N-374DC14C",
+        "user_id": "USR-F7F6F7EB",
+        "type": "topup_approved",
+        "title": "Deposit Submitted",
+        "message": "Your deposit of $122.00 via BTC is under review.",
+        "read": false,
+        "created_at": 1776808524
+    },
+    {
+        "id": "N-A1A5AC06",
+        "user_id": "USR-F7F6F7EB",
+        "type": "topup_approved",
+        "title": "Deposit Submitted",
+        "message": "Your deposit of $120.00 via TRC20 is under review.",
+        "read": false,
+        "created_at": 1776808619
+    },
+    {
+        "id": "N-89F94749",
+        "user_id": "USR-F7F6F7EB",
+        "type": "topup_approved",
+        "title": "Deposit Approved",
+        "message": "$117.73 has been added to your balance.",
+        "read": false,
+        "created_at": 1776808633
+    }
+]

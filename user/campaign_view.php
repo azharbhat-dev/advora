@@ -8,10 +8,7 @@ $campaign  = null;
 foreach ($campaigns as $c) {
     if ($c['campaign_id'] === $id && $c['user_id'] === $user['id']) { $campaign = $c; break; }
 }
-if (!$campaign) {
-    flash('Campaign not found', 'error');
-    safeRedirect('/user/campaigns.php');
-}
+if (!$campaign) { flash('Campaign not found', 'error'); safeRedirect('/user/campaigns.php'); }
 
 // Handle user pause / resume
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -20,13 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $campaigns = readJson(CAMPAIGNS_FILE);
         foreach ($campaigns as &$c) {
             if ($c['campaign_id'] === $id && $c['user_id'] === $user['id']) {
-                if ($action === 'pause' && $c['status'] === 'active') {
-                    $c['status'] = 'paused';
-                    flash('Campaign paused', 'success');
-                } elseif ($action === 'resume' && $c['status'] === 'paused') {
-                    $c['status'] = 'active';
-                    flash('Campaign resumed', 'success');
-                }
+                if ($action === 'pause'  && $c['status'] === 'active') { $c['status'] = 'paused'; flash('Campaign paused', 'success'); }
+                if ($action === 'resume' && $c['status'] === 'paused') { $c['status'] = 'active'; flash('Campaign resumed', 'success'); }
                 break;
             }
         }
@@ -37,37 +29,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $creatives = readJson(CREATIVES_FILE);
 $creative  = null;
-foreach ($creatives as $cr) {
-    if ($cr['id'] === $campaign['creative_id']) { $creative = $cr; break; }
-}
+foreach ($creatives as $cr) { if ($cr['id'] === $campaign['creative_id']) { $creative = $cr; break; } }
 
 $settings   = getSettings();
 $countryMap = [];
 foreach ($settings['countries'] as $cty) $countryMap[$cty['code']] = $cty['name'];
 
-$ctr = ($campaign['impressions'] ?? 0) > 0 ? round(($campaign['clicks'] / $campaign['impressions']) * 100, 2) : 0;
-
-// CPV - support both legacy cpc field and new cpv field
-$cpvRate = $campaign['cpv'] ?? $campaign['cpc'] ?? 0;
-
-// Daily budget - support both legacy budget and new daily_budget field
+$cpvRate     = $campaign['cpv'] ?? $campaign['cpc'] ?? 0;
 $dailyBudget = $campaign['daily_budget'] ?? $campaign['budget'] ?? 0;
+$ctr         = ($campaign['impressions'] ?? 0) > 0 ? round(($campaign['good_hits'] ?? 0) / ($campaign['impressions'] ?? 1) * 100, 2) : 0;
 
-$statusClass = [
-    'pending'  => 'badge-pending',
-    'active'   => 'badge-success',
-    'paused'   => 'badge-muted',
-    'review'   => 'badge-info',
-    'rejected' => 'badge-danger'
-][$campaign['status']] ?? 'badge-muted';
-
-// Status display label
+$statusClass = ['pending'=>'badge-pending','active'=>'badge-success','paused'=>'badge-muted','review'=>'badge-info','rejected'=>'badge-danger'][$campaign['status']] ?? 'badge-muted';
 $statusLabel = $campaign['status'] === 'review' ? 'Under Review' : $campaign['status'];
+
+// Build 24-hour chart for this campaign in CST timezone
+$allStats  = readJson(STATS_FILE);
+$campStats = array_filter($allStats, fn($s) => ($s['campaign_id'] ?? '') === $campaign['campaign_id']);
+
+$cstTz     = new DateTimeZone('America/Chicago');
+$cstNow    = new DateTime('now', $cstTz);
+$nowHour   = (int)$cstNow->format('G');
+$today     = $cstNow->format('Y-m-d');
+$yesterday = (new DateTime('yesterday', $cstTz))->format('Y-m-d');
+
+$dayData = [];
+foreach ([$yesterday, $today] as $d) {
+    $di = $dv = $dh = $ds = 0;
+    foreach ($campStats as $s) {
+        if ($s['date'] === $d) {
+            $di += $s['impressions'] ?? 0;
+            $dv += $s['good_hits']  ?? 0;
+            $dh += $s['clicks']     ?? 0;
+            $ds += $s['spent']      ?? 0;
+        }
+    }
+    $dayData[$d] = ['imp'=>$di,'views'=>$dv,'hits'=>$dh,'spend'=>round($ds,2)];
+}
+
+$chartLabels = $chartViews = $chartImpressions = $chartHits = $chartSpend = $chartCtr = [];
+for ($h = 0; $h < 24; $h++) {
+    $isYesterday        = $h > $nowHour;
+    $chartLabels[]      = str_pad($h, 2, '0', STR_PAD_LEFT) . ':00 CST';
+    $srcDate            = $isYesterday ? $yesterday : $today;
+    $dd                 = $dayData[$srcDate];
+    $chartImpressions[] = (int)floor($dd['imp']   / 24);
+    $chartViews[]       = (int)floor($dd['views'] / 24);
+    $chartHits[]        = (int)floor($dd['hits']  / 24);
+    $chartSpend[]       = round($dd['spend'] / 24, 2);
+    $di                 = (int)floor($dd['imp']   / 24);
+    $dv                 = (int)floor($dd['views'] / 24);
+    $chartCtr[]         = $di > 0 ? round($dv / $di * 100, 2) : 0;
+}
 ?>
 
 <?php if ($isNew): ?>
 <div class="campaign-id-display">
-    <div class="label">Campaign Created Successfully! Your Unique Campaign ID:</div>
+    <div class="label">Campaign Created — Your Campaign ID:</div>
     <div class="id"><?= htmlspecialchars($campaign['campaign_id']) ?>
         <button class="copy-btn" onclick="copyText('<?= $campaign['campaign_id'] ?>', this)" style="margin-left:12px">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -83,14 +100,10 @@ $statusLabel = $campaign['status'] === 'review' ? 'Under Review' : $campaign['st
         <div class="page-title"><?= htmlspecialchars($campaign['name']) ?></div>
         <div class="page-subtitle">
             <code style="color:var(--yellow)"><?= htmlspecialchars($campaign['campaign_id']) ?></code>
-            <span class="badge <?= $statusClass ?>"
-              data-live-badge="camp:<?= $campaign['campaign_id'] ?>:status"
-              data-current-status="<?= $campaign['status'] ?>"
-              style="margin-left:8px"><?= $statusLabel ?></span>
+            <span class="badge <?= $statusClass ?>" data-live-badge="camp:<?= $campaign['campaign_id'] ?>:status" data-current-status="<?= $campaign['status'] ?>" style="margin-left:8px"><?= $statusLabel ?></span>
         </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <!-- User pause / resume -->
         <?php if ($campaign['status'] === 'active'): ?>
         <form method="POST" style="display:inline">
             <input type="hidden" name="action" value="pause">
@@ -118,26 +131,27 @@ $statusLabel = $campaign['status'] === 'review' ? 'Under Review' : $campaign['st
 
 <?php if ($campaign['status'] === 'rejected'): ?>
 <div class="alert alert-danger">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-    This campaign was rejected. <?= !empty($campaign['reject_reason']) ? 'Reason: ' . htmlspecialchars($campaign['reject_reason']) : '' ?>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+    Campaign was declined.<?= !empty($campaign['reject_reason']) ? ' Reason: ' . htmlspecialchars($campaign['reject_reason']) : '' ?>
 </div>
-<?php elseif (in_array($campaign['status'], ['review', 'pending'])): ?>
+<?php elseif (in_array($campaign['status'], ['review','pending'])): ?>
 <div class="alert alert-info">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     Campaign is currently <strong>Under Review</strong>.
 </div>
 <?php elseif ($campaign['status'] === 'active'): ?>
 <div class="alert alert-success">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
     Campaign is live and running.
 </div>
 <?php elseif ($campaign['status'] === 'paused'): ?>
 <div class="alert alert-warning">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-    Campaign is paused. Click Resume to restart it.
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+    Campaign is paused.
 </div>
 <?php endif; ?>
 
+<!-- Stat cards -->
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>
@@ -157,27 +171,35 @@ $statusLabel = $campaign['status'] === 'review' ? 'Under Review' : $campaign['st
     </div>
     <div class="stat-card">
         <div class="stat-icon" style="background:rgba(255,149,0,.1);color:var(--orange)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/></svg></div>
-        <div class="stat-label">Spent Today</div>
+        <div class="stat-label">Spent</div>
         <div class="stat-value" data-live-money="camp:<?= $campaign['campaign_id'] ?>:spent"><?= fmtMoney($campaign['spent'] ?? 0) ?></div>
         <div class="stat-change">Daily: <?= fmtMoney($dailyBudget) ?></div>
     </div>
 </div>
 
-<div style="display:grid;grid-template-columns:2fr 1fr;gap:20px" class="cv-grid">
-<style>@media(max-width:900px){.cv-grid{grid-template-columns:1fr!important}}</style>
-
-<div class="card">
-    <div class="card-header">
-        <div class="card-title">Performance Chart</div>
-        <span class="live-dot"></span>
-    </div>
-    <div class="chart-wrap"><canvas id="campChart"></canvas></div>
+<!-- Google Ads style chart -->
+<div class="card" style="padding:0;overflow:hidden">
+  <div class="ga-metrics-row">
+    <div class="ga-metric active" data-metric="views"       data-color="#1a73e8" onclick="gaSwitch(this)"><div class="gam-label">Views</div><div class="gam-value"><?= fmtNum($campaign['good_hits']??0) ?></div></div>
+    <div class="ga-metric"        data-metric="impressions" data-color="#e8710a" onclick="gaSwitch(this)"><div class="gam-label">Impressions</div><div class="gam-value"><?= fmtNum($campaign['impressions']??0) ?></div></div>
+    <div class="ga-metric"        data-metric="hits"        data-color="#34a853" onclick="gaSwitch(this)"><div class="gam-label">Hits</div><div class="gam-value"><?= fmtNum($campaign['clicks']??0) ?></div></div>
+    <div class="ga-metric"        data-metric="spend"       data-color="#ea4335" onclick="gaSwitch(this)"><div class="gam-label">Spend</div><div class="gam-value"><?= fmtMoney($campaign['spent']??0) ?></div></div>
+    <div class="ga-metric"        data-metric="ctr"         data-color="#9334e8" onclick="gaSwitch(this)"><div class="gam-label">CTR</div><div class="gam-value"><?= $ctr ?>%</div></div>
+  </div>
+  <div style="padding:8px 24px 20px">
+    <div style="font-size:11px;color:var(--text-3);margin-bottom:10px;text-align:right">Last 24 Hours (CST)</div>
+    <div style="position:relative;height:260px"><canvas id="gaChart"></canvas></div>
+  </div>
 </div>
+
+<!-- Details + Targeting -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="cv-grid">
+<style>@media(max-width:900px){.cv-grid{grid-template-columns:1fr!important}}</style>
 
 <div class="card">
     <div class="card-title" style="margin-bottom:16px">Campaign Details</div>
     <div style="font-size:13px">
-        <div class="detail-row"><span class="dk">CPV</span><strong class="dv"><?= fmtMoneyPrecise($cpvRate) ?></strong></div>
+        <div class="detail-row"><span class="dk">CPV</span><strong class="dv"><?= fmtMoney($cpvRate) ?></strong></div>
         <div class="detail-row"><span class="dk">Daily Budget</span><strong class="dv"><?= fmtMoney($dailyBudget) ?></strong></div>
         <div class="detail-row"><span class="dk">Delivery</span><strong class="dv" style="text-transform:capitalize"><?= htmlspecialchars($campaign['delivery'] ?? 'even') ?></strong></div>
         <div class="detail-row"><span class="dk">Creative</span><strong class="dv"><?= $creative ? htmlspecialchars($creative['name']) : 'N/A' ?></strong></div>
@@ -186,84 +208,115 @@ $statusLabel = $campaign['status'] === 'review' ? 'Under Review' : $campaign['st
             <span class="dk">Sources</span>
             <span class="dv" style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">
                 <?php foreach ($campaign['sources'] as $src): ?>
-                <span class="badge badge-info" style="font-size:10px"><?= htmlspecialchars(ucfirst($src)) ?></span>
+                <span class="badge badge-info" style="font-size:10px"><?= ucfirst(htmlspecialchars($src)) ?></span>
                 <?php endforeach; ?>
             </span>
         </div>
         <?php endif; ?>
         <div class="detail-row"><span class="dk">IP Filter</span><strong class="dv" style="text-transform:capitalize"><?= $campaign['ip_mode'] ?></strong></div>
-        <div class="detail-row"><span class="dk">Domain Filter</span><strong class="dv" style="text-transform:capitalize"><?= $campaign['domain_mode'] ?></strong></div>
         <div class="detail-row"><span class="dk">Created</span><strong class="dv"><?= date('M d, Y', $campaign['created_at']) ?></strong></div>
     </div>
-</div>
 </div>
 
 <div class="card">
     <div class="card-title" style="margin-bottom:16px">Targeting</div>
-    <div style="margin-bottom:16px">
-        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Countries (<?= count($campaign['countries']) ?>)</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px">
-            <?php foreach ($campaign['countries'] as $cc): ?>
-            <div class="country-item selected" style="padding:6px 12px">
-                <img class="country-flag" src="https://flagcdn.com/w40/<?= strtolower($cc==='UK'?'gb':$cc) ?>.png" alt="<?= $cc ?>">
-                <span class="country-code"><?= $cc ?></span>
-                <span class="country-name" style="font-size:12px"><?= htmlspecialchars($countryMap[$cc] ?? $cc) ?></span>
-            </div>
-            <?php endforeach; ?>
+    <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Countries (<?= count($campaign['countries']) ?>)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <?php foreach ($campaign['countries'] as $cc): ?>
+        <div class="country-item selected" style="padding:5px 10px">
+            <img class="country-flag" src="https://flagcdn.com/w40/<?= strtolower($cc==='UK'?'gb':$cc) ?>.png" alt="<?= $cc ?>">
+            <span class="country-code"><?= $cc ?></span>
+            <span class="country-name" style="font-size:11px"><?= htmlspecialchars($countryMap[$cc] ?? $cc) ?></span>
         </div>
+        <?php endforeach; ?>
     </div>
-
-    <?php if (!empty($campaign['ip_list'])): ?>
-    <div style="margin-bottom:16px">
-        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">IP List (<?= ucfirst($campaign['ip_mode']) ?>)</div>
-        <div class="ip-list"><?php foreach ($campaign['ip_list'] as $ip): ?><div class="ip-tag"><?= htmlspecialchars($ip) ?></div><?php endforeach; ?></div>
-    </div>
-    <?php endif; ?>
-
-    <?php if (!empty($campaign['domain_list'])): ?>
-    <div>
-        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Domain List (<?= ucfirst($campaign['domain_mode']) ?>)</div>
-        <div class="ip-list"><?php foreach ($campaign['domain_list'] as $d): ?><div class="ip-tag"><?= htmlspecialchars($d) ?></div><?php endforeach; ?></div>
-    </div>
-    <?php endif; ?>
+</div>
 </div>
 
-<script>
-const rawStats = <?= json_encode(array_values(array_filter(readJson(STATS_FILE), fn($s) => ($s['campaign_id'] ?? '') === $campaign['campaign_id']))) ?>;
+<style>
+.ga-metrics-row{display:flex;border-bottom:1px solid var(--border);overflow-x:auto}
+.ga-metric{flex:1;min-width:100px;padding:14px 16px;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s;user-select:none}
+.ga-metric:hover{background:rgba(255,255,255,.025)}
+.ga-metric.active{border-bottom-color:var(--ga-color,#1a73e8)}
+.gam-label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:5px}
+.ga-metric.active .gam-label{color:var(--ga-color,#1a73e8)}
+.gam-value{font-size:19px;font-weight:700;letter-spacing:-.5px;color:var(--text)}
+.ga-metric.active .gam-value{color:var(--ga-color,#1a73e8)}
+</style>
 
-function buildChartData() {
-    const labels=[], imp=[], clk=[], gh=[];
-    for (let i=6;i>=0;i--) {
-        const d=new Date(); d.setDate(d.getDate()-i);
-        const ds=d.toISOString().slice(0,10);
-        labels.push(d.toLocaleDateString('en',{month:'short',day:'numeric'}));
-        let di=0,dc=0,dg=0;
-        rawStats.forEach(s=>{ if(s.date===ds){di+=s.impressions||0;dc+=s.clicks||0;dg+=s.good_hits||0;} });
-        imp.push(di); clk.push(dc); gh.push(dg);
-    }
-    return {labels,imp,clk,gh};
-}
-const cd=buildChartData();
-const ctx=document.getElementById('campChart').getContext('2d');
-new Chart(ctx,{
-    type:'line',
-    data:{
-        labels:cd.labels,
-        datasets:[
-            {label:'Impressions',data:cd.imp,borderColor:'#ffcc00',backgroundColor:'rgba(255,204,0,.1)',fill:true,tension:.4},
-            {label:'Hits',     data:cd.clk,borderColor:'#3498db',backgroundColor:'rgba(52,152,219,.1)',fill:true,tension:.4},
-            {label:'Views',      data:cd.gh, borderColor:'#00d084',backgroundColor:'rgba(0,208,132,.1)', fill:true,tension:.4}
-        ]
-    },
-    options:{
-        responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{labels:{color:'#a0a0a0'}}},
-        scales:{
-            y:{beginAtZero:true,grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#a0a0a0'}},
-            x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#a0a0a0'}}
+<script>
+const gaAllData = {
+  views:       { data: <?= json_encode($chartViews) ?>,       color: '#1a73e8', fill: 'rgba(26,115,232,0.1)',  label: 'Views' },
+  impressions: { data: <?= json_encode($chartImpressions) ?>, color: '#e8710a', fill: 'rgba(232,113,10,0.1)',  label: 'Impressions' },
+  hits:        { data: <?= json_encode($chartHits) ?>,        color: '#34a853', fill: 'rgba(52,168,83,0.1)',   label: 'Hits' },
+  spend:       { data: <?= json_encode($chartSpend) ?>,       color: '#ea4335', fill: 'rgba(234,67,53,0.1)',   label: 'Spend ($)' },
+  ctr:         { data: <?= json_encode($chartCtr) ?>,         color: '#9334e8', fill: 'rgba(147,52,232,0.1)',  label: 'CTR (%)' }
+};
+const gaLabels = <?= json_encode($chartLabels) ?>;
+let gaActive   = 'views';
+
+const gaChart = new Chart(document.getElementById('gaChart').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels: gaLabels,
+    datasets: [{
+      label:                gaAllData.views.label,
+      data:                 gaAllData.views.data,
+      borderColor:          gaAllData.views.color,
+      backgroundColor:      gaAllData.views.fill,
+      borderWidth:          2.5,
+      fill:                 true,
+      tension:              0.4,
+      pointRadius:          5,
+      pointHoverRadius:     8,
+      pointBackgroundColor: '#fff',
+      pointBorderColor:     gaAllData.views.color,
+      pointBorderWidth:     2.5,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(28,28,50,0.97)',
+        titleColor: '#eeeef8', bodyColor: '#eeeef8',
+        borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+        padding: 14, cornerRadius: 8,
+        callbacks: {
+          label: ctx => {
+            const v = ctx.raw;
+            if (gaActive==='spend') return '  '+ctx.dataset.label+': $'+v.toFixed(2);
+            if (gaActive==='ctr')   return '  '+ctx.dataset.label+': '+v.toFixed(2)+'%';
+            return '  '+ctx.dataset.label+': '+Number(v).toLocaleString();
+          }
         }
-    }
+      }
+    },
+    scales: {
+      x: { grid:{color:'rgba(255,255,255,0.05)'}, border:{color:'rgba(255,255,255,0.08)'}, ticks:{color:'#8888a8',font:{size:11},maxTicksLimit:14,maxRotation:0} },
+      y: { beginAtZero:true, grid:{color:'rgba(255,255,255,0.05)'}, border:{color:'rgba(255,255,255,0.08)'},
+           ticks:{color:'#8888a8',font:{size:11},callback:v=>gaActive==='spend'?'$'+v:(gaActive==='ctr'?v+'%':Number(v).toLocaleString())} }
+    },
+    animation: { duration: 350, easing: 'easeInOutQuart' }
+  }
 });
+
+function gaSwitch(el) {
+  document.querySelectorAll('.ga-metric').forEach(m => { m.classList.remove('active'); m.style.removeProperty('--ga-color'); });
+  el.classList.add('active');
+  el.style.setProperty('--ga-color', el.dataset.color);
+  gaActive = el.dataset.metric;
+  const d = gaAllData[gaActive];
+  gaChart.data.datasets[0].data            = d.data;
+  gaChart.data.datasets[0].label           = d.label;
+  gaChart.data.datasets[0].borderColor     = d.color;
+  gaChart.data.datasets[0].backgroundColor = d.fill;
+  gaChart.data.datasets[0].pointBorderColor = d.color;
+  gaChart.update();
+}
+document.querySelector('.ga-metric.active').style.setProperty('--ga-color', '#1a73e8');
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

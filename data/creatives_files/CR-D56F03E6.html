@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/png" href="favicon-removebg-preview.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVG Support — Get Help Now</title>
+<meta name="description" content="AVG Antivirus technical support. Get instant help with installation, activation, renewal and virus removal.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+--green:#1a9e3f;
+--green-dark:#157a31;
+--green-light:#22b84a;
+--red:#e8001c;
+--navy:#1a1a2e;
+--dark:#1e1e1e;
+--text:#1a1a1a;
+--text-mid:#444;
+--text-muted:#666;
+--text-light:#888;
+--bg:#fff;
+--bg-gray:#f5f5f5;
+--bg-gray2:#efefef;
+--border:#ddd;
+--border-light:#e8e8e8;
+--font:'Source Sans 3',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.6;overflow-x:hidden}
+a{text-decoration:none;color:inherit}
+button{font-family:var(--font)}
+
+/* TOP BAR */
+.top-bar{
+background:var(--navy);
+padding:0;
+position:sticky;
+top:0;
+z-index:1000;
+box-shadow:0 2px 8px rgba(0,0,0,.15);
+}
+.top-bar-inner{
+max-width:1200px;
+margin:0 auto;
+padding:0 24px;
+display:flex;
+align-items:center;
+justify-content:space-between;
+height:46px;
+}
+.top-bar-left{
+display:flex;
+align-items:center;
+gap:10px;
+font-size:13px;
+font-weight:600;
+color:#fff;
+letter-spacing:.2px;
+}
+.top-bar-left svg{width:15px;height:15px;flex-shrink:0;color:#4ade80}
+.chat-trigger-btn{
+background:var(--green);
+color:#fff;
+border:none;
+padding:8px 20px;
+border-radius:4px;
+font-size:13px;
+font-weight:700;
+cursor:pointer;
+letter-spacing:.3px;
+transition:all .2s;
+display:flex;
+align-items:center;
+gap:7px;
+white-space:nowrap;
+}
+.chat-trigger-btn:hover{background:var(--green-light)}
+.chat-trigger-btn svg{width:14px;height:14px}
+.pulse-dot{
+width:8px;height:8px;
+background:#4ade80;
+border-radius:50%;
+display:inline-block;
+animation:pulse 1.8s infinite;
+flex-shrink:0;
+}
+@keyframes pulse{
+0%,100%{opacity:1;transform:scale(1)}
+50%{opacity:.5;transform:scale(.75)}
+}
+
+/* HEADER */
+header{
+background:#fff;
+border-bottom:1px solid var(--border-light);
+padding:0 24px;
+box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+.header-inner{
+max-width:1200px;
+margin:0 auto;
+height:70px;
+display:flex;
+align-items:center;
+justify-content:space-between;
+}
+.logo-wrap{display:flex;align-items:center;gap:14px}
+.logo-wrap img{height:38px;width:auto;object-fit:contain}
+.logo-divider{width:1px;height:30px;background:var(--border)}
+.logo-label{
+font-size:13px;font-weight:600;
+color:var(--text-muted);
+letter-spacing:.4px;
+text-transform:uppercase;
+}
+.header-right{display:flex;align-items:center;gap:12px}
+.header-phone{
+display:flex;align-items:center;gap:8px;
+font-size:14px;font-weight:600;
+color:var(--text);
+padding:9px 18px;
+border:1.5px solid var(--border);
+border-radius:4px;
+transition:all .2s;
+}
+.header-phone:hover{border-color:var(--green);color:var(--green)}
+.header-phone svg{width:15px;height:15px}
+.header-chat-btn{
+background:var(--green);
+color:#fff;
+border:none;
+padding:10px 22px;
+border-radius:4px;
+font-size:14px;
+font-weight:700;
+cursor:pointer;
+display:flex;align-items:center;gap:8px;
+transition:all .2s;
+}
+.header-chat-btn:hover{background:var(--green-light)}
+.header-chat-btn svg{width:15px;height:15px}
+
+/* HERO */
+.hero{
+background:linear-gradient(135deg,#f0f9f3 0%,#fff 60%);
+padding:72px 24px 80px;
+border-bottom:1px solid var(--border-light);
+}
+.hero-inner{
+max-width:1200px;
+margin:0 auto;
+display:grid;
+grid-template-columns:1fr 420px;
+gap:56px;
+align-items:center;
+}
+.hero-badge{
+display:inline-flex;align-items:center;gap:8px;
+background:#e8f5ec;
+border:1px solid #b8dfc4;
+color:var(--green);
+padding:6px 14px;
+border-radius:20px;
+font-size:12px;font-weight:700;
+letter-spacing:.6px;text-transform:uppercase;
+margin-bottom:20px;
+}
+.hero-badge svg{width:12px;height:12px}
+.hero h1{
+font-size:clamp(28px,3.5vw,46px);
+font-weight:700;
+line-height:1.15;
+color:var(--text);
+margin-bottom:16px;
+}
+.hero h1 span{color:var(--red)}
+.hero-sub{
+font-size:17px;
+color:var(--text-mid);
+line-height:1.7;
+margin-bottom:32px;
+max-width:500px;
+}
+.hero-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.btn-primary{
+background:var(--green);
+color:#fff;
+border:none;
+padding:14px 30px;
+border-radius:4px;
+font-size:15px;
+font-weight:700;
+cursor:pointer;
+display:inline-flex;align-items:center;gap:9px;
+transition:all .2s;
+letter-spacing:.2px;
+}
+.btn-primary:hover{background:var(--green-light);transform:translateY(-1px);box-shadow:0 6px 20px rgba(26,158,63,.25)}
+.btn-primary svg{width:16px;height:16px}
+.btn-outline{
+background:#fff;
+color:var(--text);
+border:1.5px solid var(--border);
+padding:14px 28px;
+border-radius:4px;
+font-size:15px;
+font-weight:600;
+cursor:pointer;
+display:inline-flex;align-items:center;gap:9px;
+transition:all .2s;
+}
+.btn-outline:hover{border-color:var(--green);color:var(--green)}
+.btn-outline svg{width:16px;height:16px}
+.hero-trust{
+display:flex;align-items:center;gap:24px;
+margin-top:28px;flex-wrap:wrap;
+}
+.trust-item{
+display:flex;align-items:center;gap:7px;
+font-size:13px;color:var(--text-muted);font-weight:500;
+}
+.trust-item svg{width:14px;height:14px;color:var(--green)}
+
+/* STATUS CARD */
+.status-card{
+background:#fff;
+border:1.5px solid var(--border-light);
+border-radius:8px;
+padding:28px;
+box-shadow:0 4px 20px rgba(0,0,0,.08);
+}
+.status-card-title{
+font-size:11px;font-weight:700;
+letter-spacing:.8px;text-transform:uppercase;
+color:var(--text-muted);
+margin-bottom:20px;
+display:flex;align-items:center;gap:8px;
+}
+.status-card-title svg{width:13px;height:13px}
+.status-row{
+display:flex;align-items:center;justify-content:space-between;
+padding:13px 0;
+border-bottom:1px solid var(--border-light);
+}
+.status-row:last-of-type{border-bottom:none}
+.status-label{
+display:flex;align-items:center;gap:10px;
+font-size:14px;font-weight:500;color:var(--text);
+}
+.status-label svg{width:16px;height:16px;color:var(--text-muted)}
+.status-pill{
+font-size:11px;font-weight:700;
+padding:3px 10px;
+border-radius:20px;
+letter-spacing:.3px;
+}
+.status-pill.ok{background:#e6f9ed;color:#1a7a35}
+.status-pill.warn{background:#fff8e1;color:#b45309}
+.status-pill.err{background:#fde8eb;color:#c0001a}
+.status-cta{
+margin-top:20px;
+background:var(--green);
+color:#fff;
+border:none;
+width:100%;
+padding:13px;
+border-radius:4px;
+font-size:14px;
+font-weight:700;
+cursor:pointer;
+display:flex;align-items:center;justify-content:center;gap:8px;
+transition:all .2s;
+}
+.status-cta:hover{background:var(--green-light)}
+.status-cta svg{width:15px;height:15px}
+
+/* ISSUES */
+.issues-section{
+background:#fff;
+padding:72px 24px;
+border-top:1px solid var(--border-light);
+}
+.section-inner{max-width:1200px;margin:0 auto}
+.section-tag{
+font-size:12px;font-weight:700;
+letter-spacing:1px;text-transform:uppercase;
+color:var(--green);margin-bottom:10px;
+}
+.section-title{
+font-size:clamp(22px,2.8vw,34px);
+font-weight:700;color:var(--text);
+line-height:1.2;margin-bottom:12px;
+}
+.section-sub{
+font-size:15px;color:var(--text-muted);
+max-width:520px;line-height:1.7;margin-bottom:48px;
+}
+.issues-grid{
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:20px;
+}
+.issue-card{
+background:#fff;
+border:1.5px solid var(--border-light);
+border-radius:8px;
+padding:24px;
+cursor:pointer;
+transition:all .22s;
+}
+.issue-card:hover{
+border-color:var(--green);
+box-shadow:0 6px 24px rgba(0,0,0,.08);
+transform:translateY(-2px);
+}
+.issue-icon{
+width:46px;height:46px;
+background:#e8f5ec;
+border-radius:8px;
+display:flex;align-items:center;justify-content:center;
+margin-bottom:16px;
+}
+.issue-icon svg{width:22px;height:22px;color:var(--green)}
+.issue-card h3{font-size:15px;font-weight:700;margin-bottom:8px;color:var(--text)}
+.issue-card p{font-size:13px;color:var(--text-muted);line-height:1.6}
+.issue-link{
+display:flex;align-items:center;gap:6px;
+margin-top:16px;font-size:13px;font-weight:700;
+color:var(--green);
+transition:gap .2s;
+}
+.issue-card:hover .issue-link{gap:10px}
+.issue-link svg{width:13px;height:13px}
+
+/* STEPS */
+.steps-section{
+background:var(--bg-gray);
+padding:72px 24px;
+border-top:1px solid var(--border-light);
+border-bottom:1px solid var(--border-light);
+}
+.steps-grid{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:0;
+position:relative;
+}
+.steps-grid::before{
+content:'';
+position:absolute;
+top:27px;left:12.5%;right:12.5%;
+height:2px;
+background:linear-gradient(90deg,transparent,var(--border) 20%,var(--border) 80%,transparent);
+}
+.step{text-align:center;padding:0 16px}
+.step-num{
+width:56px;height:56px;
+background:#fff;
+border:2px solid var(--border);
+border-radius:50%;
+display:flex;align-items:center;justify-content:center;
+margin:0 auto 20px;
+font-size:17px;font-weight:700;
+color:var(--green);
+position:relative;z-index:1;
+transition:all .25s;
+}
+.step:hover .step-num{
+background:var(--green);
+border-color:var(--green);
+color:#fff;
+}
+.step h3{font-size:14px;font-weight:700;margin-bottom:8px;color:var(--text)}
+.step p{font-size:13px;color:var(--text-muted);line-height:1.6}
+
+/* CONTACT */
+.contact-section{padding:72px 24px;background:#fff}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.contact-card{
+background:#fff;
+border:1.5px solid var(--border-light);
+border-radius:8px;
+padding:32px;
+display:flex;align-items:flex-start;gap:20px;
+transition:all .22s;
+cursor:pointer;
+}
+.contact-card:hover{
+border-color:var(--green);
+box-shadow:0 6px 24px rgba(0,0,0,.07);
+}
+.contact-card-icon{
+width:52px;height:52px;
+background:#e8f5ec;
+border-radius:8px;
+display:flex;align-items:center;justify-content:center;
+flex-shrink:0;
+}
+.contact-card-icon svg{width:24px;height:24px;color:var(--green)}
+.contact-card h3{font-size:16px;font-weight:700;margin-bottom:6px;color:var(--text)}
+.contact-card p{font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:10px}
+.online-badge{
+display:inline-flex;align-items:center;gap:6px;
+font-size:12px;color:var(--green);font-weight:700;
+margin-bottom:12px;
+}
+.online-badge::before{
+content:'';width:7px;height:7px;
+background:var(--green);border-radius:50%;
+animation:pulse 1.8s infinite;
+}
+.card-link{
+font-size:13px;font-weight:700;color:var(--green);
+display:inline-flex;align-items:center;gap:6px;
+border:none;background:none;cursor:pointer;
+transition:gap .2s;
+}
+.card-link:hover{gap:10px}
+.card-link svg{width:13px;height:13px}
+
+/* FAQ */
+.faq-section{
+background:var(--bg-gray);
+padding:72px 24px;
+border-top:1px solid var(--border-light);
+}
+.faq-list{max-width:720px;margin:0 auto}
+.faq-item{border-bottom:1px solid var(--border-light)}
+.faq-q{
+width:100%;background:none;border:none;
+text-align:left;padding:20px 0;
+font-size:15px;font-weight:600;color:var(--text);
+cursor:pointer;
+display:flex;align-items:center;justify-content:space-between;gap:16px;
+transition:color .2s;
+}
+.faq-q:hover{color:var(--green)}
+.faq-q svg{width:18px;height:18px;flex-shrink:0;transition:transform .3s;color:var(--text-muted)}
+.faq-item.open .faq-q{color:var(--green)}
+.faq-item.open .faq-q svg{transform:rotate(45deg);color:var(--green)}
+.faq-a{
+font-size:14px;color:var(--text-muted);
+line-height:1.7;
+max-height:0;overflow:hidden;
+transition:max-height .35s ease,padding .35s ease;
+}
+.faq-item.open .faq-a{max-height:200px;padding-bottom:20px}
+
+/* FOOTER */
+footer{
+background:var(--navy);
+padding:44px 24px 32px;
+}
+.footer-inner{
+max-width:1200px;margin:0 auto;
+}
+.footer-top{
+display:flex;align-items:flex-start;
+justify-content:space-between;
+flex-wrap:wrap;gap:32px;
+padding-bottom:32px;
+border-bottom:1px solid rgba(255,255,255,.1);
+margin-bottom:24px;
+}
+.footer-brand img{height:30px;filter:brightness(0) invert(1);opacity:.9;margin-bottom:10px}
+.footer-brand p{font-size:12px;color:rgba(255,255,255,.45);max-width:260px;line-height:1.6}
+.footer-links-col h4{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:12px}
+.footer-links-col a{
+display:block;font-size:13px;
+color:rgba(255,255,255,.6);
+margin-bottom:8px;
+transition:color .2s;
+}
+.footer-links-col a:hover{color:#fff}
+.footer-bottom{
+display:flex;align-items:center;justify-content:space-between;
+flex-wrap:wrap;gap:12px;
+}
+.footer-copy{font-size:12px;color:rgba(255,255,255,.35)}
+.disclaimer{
+font-size:11px;color:rgba(255,255,255,.3);
+line-height:1.6;margin-top:20px;
+padding-top:20px;
+border-top:1px solid rgba(255,255,255,.07);
+}
+
+/* RESPONSIVE */
+@media(max-width:960px){
+.hero-inner{grid-template-columns:1fr}
+.status-card{display:none}
+.issues-grid{grid-template-columns:repeat(2,1fr)}
+.steps-grid{grid-template-columns:repeat(2,1fr);gap:32px}
+.steps-grid::before{display:none}
+.contact-grid{grid-template-columns:1fr}
+.footer-top{flex-direction:column}
+}
+@media(max-width:600px){
+.issues-grid{grid-template-columns:1fr}
+.steps-grid{grid-template-columns:1fr}
+.header-phone{display:none}
+.hero{padding:40px 20px 52px}
+.hero-actions{flex-direction:column;align-items:stretch}
+.btn-primary,.btn-outline{justify-content:center}
+.top-bar-left span:not(.pulse-dot){font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="top-bar-inner">
+    <div class="top-bar-left">
+      <span class="pulse-dot"></span>
+      <span>Support agents are online — get instant help now</span>
+    </div>
+    <button class="chat-trigger-btn" onclick="openChat()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Click to Chat
+    </button>
+  </div>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="logo-wrap">
+      <img src="https://static2.avg.com/10004778/web/i/other/avg-logo-v2.png" alt="AVG Support">
+      <div class="logo-divider"></div>
+      <span class="logo-label">Support Center</span>
+    </div>
+    <div class="header-right">
+      <a href="tel:+18005551234" class="header-phone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 .95h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.81a16 16 0 006.29 6.29l1.12-1.16a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        +1-800-555-1234
+      </a>
+      <button class="header-chat-btn" onclick="openChat()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Live Chat
+      </button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-badge">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        24/7 Certified Support
+      </div>
+      <h1>AVG <span>Technical</span><br>Support Center</h1>
+      <p class="hero-sub">Having issues with your AVG antivirus? Our certified technicians are available around the clock to help with installation, activation, errors, and complete virus removal.</p>
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="openChat()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Start Live Chat
+        </button>
+        <a href="tel:+18005551234" class="btn-outline">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 .95h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.81a16 16 0 006.29 6.29l1.12-1.16a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          Call Support
+        </a>
+      </div>
+      <div class="hero-trust">
+        <div class="trust-item">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg>
+          No hold time
+        </div>
+        <div class="trust-item">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg>
+          Certified technicians
+        </div>
+        <div class="trust-item">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg>
+          Remote assistance available
+        </div>
+      </div>
+    </div>
+    <div class="status-card">
+      <div class="status-card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        AVG Protection Status
+      </div>
+      <div class="status-row">
+        <div class="status-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Real-Time Protection
+        </div>
+        <span class="status-pill err">Disabled</span>
+      </div>
+      <div class="status-row">
+        <div class="status-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2H3v16h5l3 3 3-3h5V2z"/></svg>
+          Virus Definitions
+        </div>
+        <span class="status-pill warn">Outdated</span>
+      </div>
+      <div class="status-row">
+        <div class="status-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          License Status
+        </div>
+        <span class="status-pill warn">Expiring Soon</span>
+      </div>
+      <div class="status-row">
+        <div class="status-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Threats Detected
+        </div>
+        <span class="status-pill err">3 Found</span>
+      </div>
+      <button class="status-cta" onclick="openChat()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Fix Issues Now — Chat with Expert
+      </button>
+    </div>
+  </div>
+</section>
+
+<section class="issues-section">
+  <div class="section-inner">
+    <div class="section-tag">Common Issues</div>
+    <h2 class="section-title">What do you need help with?</h2>
+    <p class="section-sub">Select your issue below to get connected to a specialist instantly.</p>
+    <div class="issues-grid">
+      <div class="issue-card" onclick="openChat()">
+        <div class="issue-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg></div>
+        <h3>Installation & Setup</h3>
+        <p>Unable to install AVG, setup wizard errors, compatibility issues with Windows or Mac.</p>
+        <div class="issue-link">Get Help <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </div>
+      <div class="issue-card" onclick="openChat()">
+        <div class="issue-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+        <h3>Activation & License Key</h3>
+        <p>License key not working, activation errors, subscription renewal and transfer issues.</p>
+        <div class="issue-link">Get Help <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </div>
+      <div class="issue-card" onclick="openChat()">
+        <div class="issue-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <h3>Virus & Malware Removal</h3>
+        <p>Virus detected but not removed, ransomware, spyware, browser hijacking and popups.</p>
+        <div class="issue-link">Get Help <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </div>
+      <div class="issue-card" onclick="openChat()">
+        <div class="issue-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <h3>Slow PC / Performance</h3>
+        <p>AVG slowing down your computer, high CPU usage, startup delays and system freezing.</p>
+        <div class="issue-link">Get Help <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </div>
+      <div class="issue-card" onclick="openChat()">
+        <div class="issue-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></div>
+        <h3>Update & Renewal Issues</h3>
+        <p>AVG not updating, update errors, auto-renewal problems and subscription management.</p>
+        <div class="issue-link">Get Help <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </div>
+      <div class="issue-card" onclick="openChat()">
+        <div class="issue-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></div>
+        <h3>Uninstall & Reinstall</h3>
+        <p>Unable to uninstall AVG, leftover files, clean reinstall and fresh setup assistance.</p>
+        <div class="issue-link">Get Help <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="steps-section">
+  <div class="section-inner">
+    <div class="section-tag" style="text-align:center">How It Works</div>
+    <h2 class="section-title" style="text-align:center;margin-bottom:52px">Get support in 4 simple steps</h2>
+    <div class="steps-grid">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Click Chat</h3>
+        <p>Hit any chat button to connect instantly with a live support agent.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Describe Issue</h3>
+        <p>Tell us your problem — installation, virus, license, or performance.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Get Diagnosed</h3>
+        <p>Our expert analyzes your issue and provides a tailored solution.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Problem Solved</h3>
+        <p>Remote assistance or step-by-step guide until your issue is fully resolved.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="contact-section">
+  <div class="section-inner">
+    <div class="section-tag">Contact Us</div>
+    <h2 class="section-title">Multiple ways to reach us</h2>
+    <p class="section-sub">Choose the support channel that works best for you.</p>
+    <div class="contact-grid">
+      <div class="contact-card" onclick="openChat()">
+        <div class="contact-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+        <div>
+          <h3>Live Chat Support</h3>
+          <p>Instant messaging with a certified AVG technician. Average response under 30 seconds.</p>
+          <div class="online-badge">Agents Online Now</div>
+          <button class="card-link" onclick="openChat()">Start Chat <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+        </div>
+      </div>
+      <div class="contact-card">
+        <div class="contact-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 .95h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.81a16 16 0 006.29 6.29l1.12-1.16a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        </div>
+        <div>
+          <h3>Phone Support</h3>
+          <p>Speak directly with a technician. Available 24 hours a day, 7 days a week all year round.</p>
+          <p style="font-size:20px;font-weight:700;color:var(--text);margin:8px 0 14px">+1-800-555-1234</p>
+          <a href="tel:+18005551234" class="card-link">Call Now <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="faq-section">
+  <div class="section-inner">
+    <div class="section-tag" style="text-align:center">FAQ</div>
+    <h2 class="section-title" style="text-align:center;margin-bottom:40px">Frequently Asked Questions</h2>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-q">Is this an official AVG support page? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <div class="faq-a">We are an independent third-party technical support provider specializing in AVG antivirus products. We are not affiliated with or endorsed by AVG Technologies or Avast Software.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q">How quickly will I get connected to an agent? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <div class="faq-a">Our live chat connects you with an available agent in under 30 seconds. Phone support is available 24/7 with minimal hold times.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q">What information should I have ready before contacting support? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <div class="faq-a">Have your AVG license key, Windows or Mac version, and a brief description of the issue ready. This helps our agents resolve your problem faster.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q">Can you help with both Windows and Mac versions? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <div class="faq-a">Yes, our technicians are trained on AVG for both Windows and Mac platforms, including all recent versions.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q">Is remote assistance available? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <div class="faq-a">Yes. With your permission, our technicians can remotely access your computer to diagnose and fix issues directly, making the process fast and hassle-free.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <img src="logo.png" alt="AVG Support">
+        <p>Independent third-party technical support for AVG antivirus products.</p>
+      </div>
+      <div class="footer-links-col">
+        <h4>Support</h4>
+        <a href="#" onclick="openChat();return false;">Live Chat</a>
+        <a href="tel:+18005551234">Phone Support</a>
+        <a href="#">Remote Assistance</a>
+      </div>
+      <div class="footer-links-col">
+        <h4>Issues</h4>
+        <a href="#" onclick="openChat();return false;">Installation Help</a>
+        <a href="#" onclick="openChat();return false;">Virus Removal</a>
+        <a href="#" onclick="openChat();return false;">License Activation</a>
+      </div>
+      <div class="footer-links-col">
+        <h4>Legal</h4>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Disclaimer</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-copy">© 2026 Independent AVG Support. All rights reserved.</span>
+    </div>
+    <div class="disclaimer">
+      <strong>Disclaimer:</strong> This is an independent third-party technical support website and is not affiliated with, endorsed by, or connected to AVG Technologies or Avast Software s.r.o. AVG is a registered trademark of Avast Software s.r.o. All trademarks and product names are the property of their respective owners. We provide independent technical support services.
+    </div>
+  </div>
+</footer>
+
+<script>
+function openChat() {
+  if (window.Tawk_API) {
+    window.Tawk_API.maximize();
+  }
+}
+document.querySelectorAll('.faq-q').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.parentElement;
+    const isOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+    if (!isOpen) item.classList.add('open');
+  });
+});
+</script>
+
+<script type="text/javascript">
+var Tawk_API = Tawk_API || {}, Tawk_LoadStart = new Date();
+(function(){
+  var s1 = document.createElement("script"), s0 = document.getElementsByTagName("script")[0];
+  s1.async = true;
+  s1.src = 'https://embed.tawk.to/69e76f9460b8be1d5d9dc25f/1jmo0nnlh';
+  s1.charset = 'UTF-8';
+  s1.setAttribute('crossorigin','*');
+  s0.parentNode.insertBefore(s1, s0);
+})();
+
+(function waitForTawk() {
+  if (window.Tawk_API && typeof window.Tawk_API.maximize === 'function') {
+    window.Tawk_API.maximize();
+  } else {
+    setTimeout(waitForTawk, 500);
+  }
+})();
+</script>
+</body>
+</html>

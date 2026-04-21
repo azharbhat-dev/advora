@@ -1,0 +1,72 @@
+[
+    {
+        "code": "US",
+        "name": "United States",
+        "impressions": 1000000,
+        "win_rate": 99,
+        "updated_at": 1776808278
+    },
+    {
+        "code": "UK",
+        "name": "United Kingdom",
+        "impressions": 100000,
+        "win_rate": 21,
+        "updated_at": 1776808176
+    },
+    {
+        "code": "CA",
+        "name": "Canada",
+        "impressions": 900000,
+        "win_rate": 92,
+        "updated_at": 1776808269
+    },
+    {
+        "code": "FR",
+        "name": "France",
+        "impressions": 20000,
+        "win_rate": 8,
+        "updated_at": 1776808202
+    },
+    {
+        "code": "AU",
+        "name": "Australia",
+        "impressions": 90000,
+        "win_rate": 43,
+        "updated_at": 1776808216
+    },
+    {
+        "code": "DE",
+        "name": "Germany",
+        "impressions": 120000,
+        "win_rate": 12,
+        "updated_at": 1776808225
+    },
+    {
+        "code": "NL",
+        "name": "Netherlands",
+        "impressions": 12000,
+        "win_rate": 12,
+        "updated_at": 1776808232
+    },
+    {
+        "code": "NZ",
+        "name": "New Zealand",
+        "impressions": 121222,
+        "win_rate": 12,
+        "updated_at": 1776808240
+    },
+    {
+        "code": "IE",
+        "name": "Ireland",
+        "impressions": 1222,
+        "win_rate": 1,
+        "updated_at": 1776808247
+    },
+    {
+        "code": "SE",
+        "name": "Sweden",
+        "impressions": 2333,
+        "win_rate": 3,
+        "updated_at": 1776808256
+    }
+]

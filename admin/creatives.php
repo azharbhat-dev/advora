@@ -3,20 +3,41 @@ require_once __DIR__ . '/../includes/admin_header.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    $id = $_POST['creative_id'] ?? '';
+    $id     = $_POST['creative_id'] ?? '';
     $creatives = readJson(CREATIVES_FILE);
+
     if ($action === 'approve') {
-        foreach ($creatives as &$cr) { if ($cr['id']===$id) { $cr['status']='approved'; break; } }
+        foreach ($creatives as &$cr) {
+            if ($cr['id'] === $id) {
+                $cr['status'] = 'approved';
+                addNotification($cr['user_id'], 'creative_approved',
+                    'Creative Approved',
+                    'Your creative "' . $cr['name'] . '" has been approved and is ready to use in campaigns.'
+                );
+                break;
+            }
+        }
         writeJson(CREATIVES_FILE, $creatives);
         flash('Creative approved', 'success');
+
     } elseif ($action === 'reject') {
-        foreach ($creatives as &$cr) { if ($cr['id']===$id) { $cr['status']='rejected'; break; } }
+        foreach ($creatives as &$cr) {
+            if ($cr['id'] === $id) {
+                $cr['status'] = 'rejected';
+                addNotification($cr['user_id'], 'creative_rejected',
+                    'Creative Declined',
+                    'Your creative "' . $cr['name'] . '" was not approved. Please review and upload a new version.'
+                );
+                break;
+            }
+        }
         writeJson(CREATIVES_FILE, $creatives);
         flash('Creative rejected', 'success');
+
     } elseif ($action === 'delete') {
         foreach ($creatives as $cr) {
-            if ($cr['id']===$id && !empty($cr['stored_file'])) {
-                $path = DATA_PATH.'/creatives_files/'.$cr['stored_file'];
+            if ($cr['id'] === $id && !empty($cr['stored_file'])) {
+                $path = DATA_PATH . '/creatives_files/' . $cr['stored_file'];
                 if (file_exists($path)) unlink($path);
                 break;
             }
@@ -25,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         writeJson(CREATIVES_FILE, $creatives);
         flash('Creative deleted', 'success');
     }
+
     safeRedirect('/admin/creatives.php');
 }
 
@@ -33,7 +55,7 @@ if (isset($_GET['preview'])) {
     $id = $_GET['preview'];
     foreach (readJson(CREATIVES_FILE) as $cr) {
         if ($cr['id'] === $id) {
-            $path = DATA_PATH.'/creatives_files/'.$cr['stored_file'];
+            $path = DATA_PATH . '/creatives_files/' . $cr['stored_file'];
             if (file_exists($path)) {
                 header('Content-Type: text/html; charset=utf-8');
                 header('X-Frame-Options: SAMEORIGIN');
@@ -47,12 +69,12 @@ if (isset($_GET['preview'])) {
 if (isset($_GET['download'])) {
     $id = $_GET['download'];
     foreach (readJson(CREATIVES_FILE) as $cr) {
-        if ($cr['id']===$id) {
-            $path = DATA_PATH.'/creatives_files/'.$cr['stored_file'];
+        if ($cr['id'] === $id) {
+            $path = DATA_PATH . '/creatives_files/' . $cr['stored_file'];
             if (file_exists($path)) {
                 header('Content-Type: text/html');
-                header('Content-Disposition: attachment; filename="'.$cr['filename'].'"');
-                header('Content-Length: '.filesize($path));
+                header('Content-Disposition: attachment; filename="' . $cr['filename'] . '"');
+                header('Content-Length: ' . filesize($path));
                 readfile($path); exit;
             }
         }
@@ -61,11 +83,12 @@ if (isset($_GET['download'])) {
 }
 
 $creatives = readJson(CREATIVES_FILE);
-$users = readJson(USERS_FILE);
-$userMap = [];
+$users     = readJson(USERS_FILE);
+$userMap   = [];
 foreach ($users as $u) $userMap[$u['id']] = $u['username'];
+
 $filter = $_GET['filter'] ?? 'all';
-if ($filter !== 'all') $creatives = array_filter($creatives, fn($c) => $c['status']===$filter);
+if ($filter !== 'all') $creatives = array_filter($creatives, fn($c) => $c['status'] === $filter);
 $creatives = array_reverse($creatives);
 ?>
 
@@ -79,12 +102,13 @@ $creatives = array_reverse($creatives);
 <div class="card">
   <div class="filter-bar">
     <select class="form-control" onchange="location.href='?filter='+this.value">
-      <option value="all" <?= $filter==='all'?'selected':'' ?>>All</option>
-      <option value="pending" <?= $filter==='pending'?'selected':'' ?>>Pending</option>
+      <option value="all"      <?= $filter==='all'     ?'selected':'' ?>>All</option>
+      <option value="pending"  <?= $filter==='pending' ?'selected':'' ?>>Pending</option>
       <option value="approved" <?= $filter==='approved'?'selected':'' ?>>Approved</option>
       <option value="rejected" <?= $filter==='rejected'?'selected':'' ?>>Rejected</option>
     </select>
   </div>
+
   <?php if (empty($creatives)): ?>
   <div class="empty-state">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
@@ -94,20 +118,34 @@ $creatives = array_reverse($creatives);
   <div class="table-wrap">
     <table>
       <thead>
-        <tr><th>ID</th><th>User</th><th>Name</th><th>File</th><th>Size</th><th>URL Track</th><th>Status</th><th>Uploaded</th><th>Actions</th></tr>
+        <tr>
+          <th>ID</th>
+          <th>User</th>
+          <th>Name</th>
+          <th>File</th>
+          <th>Size</th>
+          <th>URL Track</th>
+          <th>Status</th>
+          <th>Uploaded</th>
+          <th>Actions</th>
+        </tr>
       </thead>
       <tbody>
       <?php foreach ($creatives as $cr):
-        $sc = ['pending'=>'badge-pending','approved'=>'badge-success','rejected'=>'badge-danger'][$cr['status']]??'badge-muted';
+        $sc = ['pending'=>'badge-pending','approved'=>'badge-success','rejected'=>'badge-danger'][$cr['status']] ?? 'badge-muted';
       ?>
         <tr>
           <td><code style="color:var(--yellow);font-size:11px"><?= $cr['id'] ?></code></td>
-          <td><?= htmlspecialchars($userMap[$cr['user_id']]??'Unknown') ?></td>
+          <td><?= htmlspecialchars($userMap[$cr['user_id']] ?? 'Unknown') ?></td>
           <td><strong><?= htmlspecialchars($cr['name']) ?></strong></td>
           <td style="font-size:12px;color:var(--text-2)"><?= htmlspecialchars($cr['filename']) ?></td>
           <td><?= number_format($cr['file_size']/1024,1) ?> KB</td>
           <td><?= !empty($cr['track_url']) ? '<span class="badge badge-success">Yes</span>' : '<span class="badge badge-muted">No</span>' ?></td>
-          <td><span class="badge <?= $sc ?>" data-live-badge="cr:<?= $cr['id'] ?>:status" data-current-status="<?= $cr['status'] ?>"><?= $cr['status'] ?></span></td>
+          <td>
+            <span class="badge <?= $sc ?>"
+              data-live-badge="cr:<?= $cr['id'] ?>:status"
+              data-current-status="<?= $cr['status'] ?>"><?= $cr['status'] ?></span>
+          </td>
           <td style="font-size:12px;color:var(--text-2)"><?= timeAgo($cr['uploaded_at']) ?></td>
           <td>
             <div style="display:flex;gap:4px;flex-wrap:wrap">
@@ -116,20 +154,20 @@ $creatives = array_reverse($creatives);
                 View
               </button>
               <a href="?download=<?= $cr['id'] ?>" class="btn btn-secondary btn-sm">Download</a>
-              <?php if ($cr['status']==='pending'): ?>
+              <?php if ($cr['status'] === 'pending'): ?>
               <form method="POST" style="display:inline">
-                <input type="hidden" name="action" value="approve">
+                <input type="hidden" name="action"      value="approve">
                 <input type="hidden" name="creative_id" value="<?= $cr['id'] ?>">
                 <button type="submit" class="btn btn-success btn-sm">Approve</button>
               </form>
               <form method="POST" style="display:inline">
-                <input type="hidden" name="action" value="reject">
+                <input type="hidden" name="action"      value="reject">
                 <input type="hidden" name="creative_id" value="<?= $cr['id'] ?>">
                 <button type="submit" class="btn btn-danger btn-sm">Reject</button>
               </form>
               <?php endif; ?>
               <form method="POST" style="display:inline" onsubmit="return confirm('Delete creative?')">
-                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="action"      value="delete">
                 <input type="hidden" name="creative_id" value="<?= $cr['id'] ?>">
                 <button type="submit" class="btn btn-danger btn-sm">Del</button>
               </form>
@@ -173,9 +211,9 @@ $creatives = array_reverse($creatives);
 <script>
 function previewCreative(id, name) {
   const url = '/admin/creatives.php?preview=' + encodeURIComponent(id);
-  document.getElementById('previewTitle').textContent = name;
-  document.getElementById('previewFrame').src = url;
-  document.getElementById('previewOpenBtn').href = url;
+  document.getElementById('previewTitle').textContent  = name;
+  document.getElementById('previewFrame').src          = url;
+  document.getElementById('previewOpenBtn').href       = url;
   document.getElementById('previewUrlBar').textContent = name + '.html';
   openModal('previewModal');
 }

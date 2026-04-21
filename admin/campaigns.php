@@ -9,10 +9,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($c['campaign_id'] === $cid) {
             if ($action === 'approve') {
                 $c['status'] = 'active';
+                addNotification($c['user_id'], 'campaign_approved',
+                    'Campaign Approved',
+                    'Your campaign "' . $c['name'] . '" has been approved and is now live.'
+                );
                 flash('Campaign approved', 'success');
             } elseif ($action === 'reject') {
                 $c['status']        = 'rejected';
                 $c['reject_reason'] = trim($_POST['reason'] ?? '');
+                addNotification($c['user_id'], 'campaign_rejected',
+                    'Campaign Declined',
+                    'Your campaign "' . $c['name'] . '" was not approved.' . (!empty($c['reject_reason']) ? ' Reason: ' . $c['reject_reason'] : '')
+                );
                 flash('Campaign rejected', 'success');
             } elseif ($action === 'pause') {
                 $c['status'] = 'paused';
@@ -108,7 +116,7 @@ $campaigns = array_reverse($campaigns);
                           data-live-badge="camp:<?= $c['campaign_id'] ?>:status"
                           data-current-status="<?= $c['status'] ?>"><?= $statusLabel ?></span>
                     </td>
-                    <td><?= fmtMoneyPrecise($cpvRate) ?></td>
+                    <td><?= fmtMoney($cpvRate) ?></td>
                     <td><?= fmtMoney($dailyBudget) ?></td>
                     <td data-live-money="camp:<?= $c['campaign_id'] ?>:spent"><?= fmtMoney($c['spent']??0) ?></td>
                     <td data-live="camp:<?= $c['campaign_id'] ?>:impressions"><?= fmtNum($c['impressions']??0) ?></td>

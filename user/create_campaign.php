@@ -157,7 +157,7 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
         <div class="form-group">
           <label class="form-label">Campaign Name *</label>
           <input type="text" name="name" id="f_name" class="form-control"
-            value="<?= htmlspecialchars($editing['name']??'') ?>" placeholder="e.g. US Premium Push Q1 2025">
+            value="<?= htmlspecialchars($editing['name']??'') ?>" placeholder="e.g. Campaign-1">
         </div>
         <div class="form-group">
           <label class="form-label">CPV Bid (USD) *</label>
@@ -283,7 +283,7 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
               <input type="checkbox" name="sources[]" value="premium" <?= in_array('premium',$editingSources)?'checked':'' ?> style="display:none">
               <div class="sc-col sc-check"><div class="source-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div></div>
               <div class="sc-col sc-name"><div class="source-icon source-premium"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#0095F6"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span>Premium</span></div>
-              <div class="sc-col sc-center">101</div>
+              <div class="sc-col sc-center">1.9k</div>
               <div class="sc-col sc-center sc-price">$0.25</div>
               <div class="sc-col"><span class="source-tag">Best for start</span></div>
             </div>
@@ -292,7 +292,7 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
               <input type="checkbox" name="sources[]" value="standard" <?= in_array('standard',$editingSources)?'checked':'' ?> style="display:none">
               <div class="sc-col sc-check"><div class="source-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div></div>
               <div class="sc-col sc-name"><div class="source-icon source-standard"><svg width="16" height="16" viewBox="0 0 28 20" fill="none"><path d="M14 2l1.8 3.6 4 .58-2.9 2.83.68 3.99L14 11.1l-3.58 1.9.68-3.99L8.2 6.18l4-.58z" fill="#F59E0B"/><path d="M5 6l1.1 2.2 2.4.35-1.74 1.7.41 2.4L5 11.5l-2.17 1.15.41-2.4L1.5 8.55l2.4-.35z" fill="#F59E0B"/><path d="M23 6l1.1 2.2 2.4.35-1.74 1.7.41 2.4L23 11.5l-2.17 1.15.41-2.4-1.74-1.7 2.4-.35z" fill="#F59E0B"/></svg></div><span>Standard</span></div>
-              <div class="sc-col sc-center">115</div>
+              <div class="sc-col sc-center">2.2k</div>
               <div class="sc-col sc-center sc-price">$0.19</div>
               <div class="sc-col"><span class="source-tag">Best to scale</span></div>
             </div>
@@ -301,7 +301,7 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
               <input type="checkbox" name="sources[]" value="remnant" <?= in_array('remnant',$editingSources)?'checked':'' ?> style="display:none">
               <div class="sc-col sc-check"><div class="source-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div></div>
               <div class="sc-col sc-name"><div class="source-icon source-remnant"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="#6366F1"/><path d="M9 12l2 2 4-4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span>Remnant</span></div>
-              <div class="sc-col sc-center">230</div>
+              <div class="sc-col sc-center">4.5k</div>
               <div class="sc-col sc-center sc-price">$0.18</div>
               <div class="sc-col"><span class="source-tag">Best to buy cheap</span></div>
             </div>
@@ -310,7 +310,7 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
               <input type="checkbox" name="sources[]" value="new" <?= in_array('new',$editingSources)?'checked':'' ?> style="display:none">
               <div class="sc-col sc-check"><div class="source-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div></div>
               <div class="sc-col sc-name"><div class="source-icon source-new"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#10B981"/><path d="M12 6v6l4 2" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div><span>New</span></div>
-              <div class="sc-col sc-center">250</div>
+              <div class="sc-col sc-center">6.5k</div>
               <div class="sc-col sc-center sc-price">$0.23</div>
               <div class="sc-col"><span class="source-tag">Best to expand</span></div>
             </div>
@@ -659,7 +659,7 @@ function updateEstimate(){
 function buildSummary(){
   buildSchedulePayload();updateCountryInputs();
   var name=document.getElementById('f_name').value||'-';
-  var cpv=parseFloat(document.getElementById('f_cpv').value||0).toFixed(4);
+  var cpv=parseFloat(document.getElementById('f_cpv').value||0).toFixed(2);
   var budget=parseFloat(document.getElementById('f_budget').value||0).toFixed(2);
   var schedCnt=document.querySelectorAll('.schedule-cell.active').length;
   var delivery=document.querySelector('input[name="delivery"]:checked');

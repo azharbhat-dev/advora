@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/logo.php';
+require_once __DIR__ . '/../includes/notifications.php';
 requireUser();
 $user = currentUser();
 if (!$user) { session_destroy(); header('Location: /login.php'); exit; }
@@ -43,11 +44,7 @@ $acct = $acctConfig[$accountType] ?? $acctConfig['rookie'];
     Campaigns
     <?php if ($pendingCount > 0): ?><span class="nav-badge"><?= $pendingCount ?></span><?php endif; ?>
   </a>
-  <a href="/user/insights.php"    class="nav-item <?= $currentPage==='insights'   ?'active':'' ?>">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><polyline points="2 12 6 8 10 12 14 6 18 10"/></svg>
-    Insights
-  </a>
-    <a href="/user/metrics.php"     class="nav-item <?= $currentPage==='metrics'    ?'active':'' ?>">
+  <a href="/user/metrics.php"     class="nav-item <?= $currentPage==='metrics'    ?'active':'' ?>">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
     Metrics
   </a>
@@ -89,38 +86,38 @@ $acct = $acctConfig[$accountType] ?? $acctConfig['rookie'];
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
   </div>
   <div class="topbar-title"><?= ucfirst(str_replace('_',' ',$currentPage)) ?></div>
-  <div class="topbar-user" style="gap:8px">
+  <div class="topbar-user" style="gap:10px">
 
     <!-- CST Clock -->
-    <div class="topbar-pill" style="color:var(--text-2)">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      <span id="cst-clock" style="font-variant-numeric:tabular-nums">--:--:-- --</span>
-      <span style="color:var(--text-3);font-size:10px;margin-left:1px">CST</span>
+    <div style="display:flex;align-items:center;gap:6px;background:var(--bg-3);border:1px solid var(--border);padding:5px 11px;border-radius:8px;font-size:12px;color:var(--text-2)">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span id="cst-clock">--:-- --</span>
+      <span style="color:var(--text-3);font-size:10px">CST</span>
     </div>
 
     <!-- Account type badge -->
-    <div class="topbar-pill" style="background:<?= $acct['bg'] ?>;border-color:<?= $acct['color'] ?>33;color:<?= $acct['color'] ?>;font-weight:700">
+    <div style="display:flex;align-items:center;gap:5px;background:<?= $acct['bg'] ?>;border:1px solid <?= $acct['color'] ?>33;padding:5px 11px;border-radius:8px;font-size:12px;font-weight:700;color:<?= $acct['color'] ?>">
       <?php if ($accountType === 'expert'): ?>
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="<?= $acct['color'] ?>"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="<?= $acct['color'] ?>"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
       <?php elseif ($accountType === 'professional'): ?>
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="<?= $acct['color'] ?>" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="<?= $acct['color'] ?>" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
       <?php else: ?>
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="<?= $acct['color'] ?>" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="<?= $acct['color'] ?>" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       <?php endif; ?>
       <?= $acct['label'] ?>
     </div>
 
     <!-- Notification bell -->
-    <a href="/user/notifications.php" class="topbar-icon-btn">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <a href="/user/notifications.php" style="position:relative;width:36px;height:36px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text-2);text-decoration:none;transition:all .15s" onmouseover="this.style.borderColor='var(--border-hi)'" onmouseout="this.style.borderColor='var(--border)'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       <?php if ($unreadNotifs > 0): ?>
-      <span class="topbar-badge"><?= $unreadNotifs > 9 ? '9+' : $unreadNotifs ?></span>
+      <span style="position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:9px;font-weight:800;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)"><?= $unreadNotifs > 9 ? '9+' : $unreadNotifs ?></span>
       <?php endif; ?>
     </a>
 
     <!-- Balance -->
     <div class="balance-pill">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
       <span data-live-balance><?= fmtMoney($user['balance']) ?></span>
     </div>
 
@@ -139,13 +136,6 @@ $acct = $acctConfig[$accountType] ?? $acctConfig['rookie'];
 </div>
 <?php endif; ?>
 
-<style>
-.topbar-pill{display:inline-flex;align-items:center;gap:5px;background:var(--bg-3);border:1px solid var(--border);padding:4px 10px;border-radius:7px;font-size:11.5px;white-space:nowrap}
-.topbar-icon-btn{position:relative;width:34px;height:34px;background:var(--bg-3);border:1px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--text-2);text-decoration:none;transition:border-color .15s;flex-shrink:0}
-.topbar-icon-btn:hover{border-color:var(--border-hi);color:var(--text)}
-.topbar-badge{position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);padding:0 3px}
-@media(max-width:900px){.topbar-pill{display:none}}
-</style>
 <script>
 // CST Clock (UTC-6)
 function updateCSTClock() {

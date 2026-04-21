@@ -54,6 +54,7 @@ if ($filter !== 'all') {
                     <th>Impressions</th>
                     <th>Views</th>
                     <th>Hits</th>
+                    <th>CTR</th>
                     <th>Created</th>
                     <th></th>
                 </tr>
@@ -80,12 +81,13 @@ if ($filter !== 'all') {
                           data-live-badge="camp:<?= $cid ?>:status"
                           data-current-status="<?= $c['status'] ?>"><?= $statusLabel ?></span>
                     </td>
-                    <td><?= fmtMoneyPrecise($cpvRate) ?></td>
+                    <td><?= fmtMoney($cpvRate) ?></td>
                     <td><?= fmtMoney($dailyBudget) ?></td>
                     <td data-live-money="camp:<?= $cid ?>:spent"><?= fmtMoney($c['spent']??0) ?></td>
                     <td data-live="camp:<?= $cid ?>:impressions"><?= fmtNum($c['impressions']??0) ?></td>
                     <td data-live="camp:<?= $cid ?>:views"><?= fmtNum($c['good_hits']??0) ?></td>
                     <td data-live="camp:<?= $cid ?>:hits"><?= fmtNum($c['clicks']??0) ?></td>
+                    <td data-live="camp:<?= $cid ?>:ctr"><?= ($c['impressions']??0)>0 ? round(($c['good_hits']??0)/($c['impressions']??1)*100,2).'%' : '0%' ?></td>
                     <td style="font-size:12px;color:var(--text-2)"><?= timeAgo($c['created_at']) ?></td>
                     <td><a href="/user/campaign_view.php?id=<?= urlencode($cid) ?>" class="btn btn-secondary btn-sm">View</a></td>
                 </tr>

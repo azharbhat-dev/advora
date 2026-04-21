@@ -1,18 +1,5 @@
 /* =========================================================
    Advora — app.js
-   Universal live-update system via data-live attributes.
-
-   Keys used in templates:
-     data-live="key"           → textContent updated
-     data-live-badge="key"     → className + textContent updated
-     data-live-money="key"     → formatted as $X.XX
-     data-live-balance         → topbar balance pill
-
-   Metric naming:
-     impressions — raw ad loads
-     views       — quality views (good_hits in DB)
-     hits        — user interactions (clicks in DB)
-     spend       — money spent
    ========================================================= */
 
 // ── Modals ───────────────────────────────────────────────
@@ -49,27 +36,17 @@ document.querySelectorAll('.alert:not(.alert-info):not(.alert-warning)').forEach
 const IS_ADMIN = document.body.dataset.role === 'admin';
 const POLL_MS  = 3500;
 
-function n(v)   { return Number(v).toLocaleString(); }
+function n(v)     { return Number(v).toLocaleString(); }
 function money(v) { return '$' + parseFloat(v).toFixed(2); }
 function pct(a,b) { return b > 0 ? ((a/b)*100).toFixed(2) + '%' : '0.00%'; }
 
 const BADGE_CLASS = {
-  active:   'badge-success',
-  pending:  'badge-pending',
-  paused:   'badge-muted',
-  review:   'badge-info',
-  rejected: 'badge-danger',
-  approved: 'badge-success',
-  disabled: 'badge-danger',
-  enabled:  'badge-success'
+  active:'badge-success', pending:'badge-pending', paused:'badge-muted',
+  review:'badge-info', rejected:'badge-danger', approved:'badge-success',
+  disabled:'badge-danger', enabled:'badge-success'
 };
-function badgeClass(s) { return BADGE_CLASS[s] || 'badge-muted'; }
-
-// Badge label — maps internal status to display label
-function badgeLabel(s) {
-  if (s === 'review') return 'Under Review';
-  return s;
-}
+function badgeClass(s)  { return BADGE_CLASS[s] || 'badge-muted'; }
+function badgeLabel(s)  { return s === 'review' ? 'Under Review' : s; }
 
 function setLive(key, value) {
   document.querySelectorAll('[data-live="'+key+'"]').forEach(el => { if (el.textContent !== String(value)) el.textContent = value; });
@@ -82,12 +59,123 @@ function setLiveBadge(key, status) {
   document.querySelectorAll('[data-live-badge="'+key+'"]').forEach(el => {
     if (el.dataset.currentStatus === status) return;
     el.dataset.currentStatus = status;
-    el.className = 'badge ' + badgeClass(status);
+    el.className   = 'badge ' + badgeClass(status);
     el.textContent = badgeLabel(status);
   });
 }
 
-// ── Apply user data ──────────────────────────────────────
+// ── Sound System ─────────────────────────────────────────
+// All sounds generated via Web Audio API — no external files needed
+
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let _audioCtx  = null;
+
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new AudioCtx();
+  return _audioCtx;
+}
+
+// User notification chime — soft two-tone ding
+function playNotifSound() {
+  try {
+    const ctx = getAudioCtx();
+    const notes = [880, 1100]; // A5, C#6 — pleasant chime
+    notes.forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type      = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.12);
+      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.12);
+      gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + i * 0.12 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.35);
+      osc.start(ctx.currentTime + i * 0.12);
+      osc.stop(ctx.currentTime  + i * 0.12 + 0.35);
+    });
+  } catch(e) {}
+}
+
+// Admin alert sound — sharper ping for incoming submissions
+function playAdminSound() {
+  try {
+    const ctx  = getAudioCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(660, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(880, ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.22, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch(e) {}
+}
+
+// Unlock audio on first user gesture (browser autoplay policy)
+let _audioUnlocked = false;
+function unlockAudio() {
+  if (_audioUnlocked) return;
+  _audioUnlocked = true;
+  try {
+    const ctx = getAudioCtx();
+    const buf = ctx.createBuffer(1,1,22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+  } catch(e) {}
+}
+document.addEventListener('click',      unlockAudio, { once: true });
+document.addEventListener('keydown',    unlockAudio, { once: true });
+document.addEventListener('touchstart', unlockAudio, { once: true });
+
+// ── Notification bell updater (user side) ─────────────────
+let _lastUnreadCount = -1; // -1 = not yet initialised
+
+function updateNotifBell(count) {
+  // Update bell badge in topbar
+  const badge = document.querySelector('.topbar-badge');
+  const navBadge = document.querySelector('.nav-item[href="/user/notifications.php"] .nav-badge');
+
+  if (badge) {
+    if (count > 0) {
+      badge.textContent    = count > 9 ? '9+' : count;
+      badge.style.display  = 'flex';
+    } else {
+      badge.style.display  = 'none';
+    }
+  }
+  if (navBadge) {
+    if (count > 0) {
+      navBadge.textContent   = count;
+      navBadge.style.display = '';
+    } else {
+      navBadge.style.display = 'none';
+    }
+  }
+
+  // Play sound only when count genuinely increases
+  if (_lastUnreadCount >= 0 && count > _lastUnreadCount) {
+    playNotifSound();
+  }
+  _lastUnreadCount = count;
+}
+
+// ── Admin pending tracker ─────────────────────────────────
+let _lastPendingTotal = -1;
+
+function checkAdminNewSubmissions(pending) {
+  const total = (pending.campaigns || 0) + (pending.creatives || 0) + (pending.topups || 0);
+  if (_lastPendingTotal >= 0 && total > _lastPendingTotal) {
+    playAdminSound();
+  }
+  _lastPendingTotal = total;
+}
+
+// ── Apply user data ───────────────────────────────────────
 function applyUser(d) {
   if (d.balance !== undefined) {
     document.querySelectorAll('[data-live-balance]').forEach(el => { el.textContent = money(d.balance); });
@@ -99,7 +187,7 @@ function applyUser(d) {
     setLive('total-views',       n(t.views));
     setLive('total-hits',        n(t.hits));
     setLiveMoney('total-spent',  t.spent);
-    setLive('total-ctr', t.impressions > 0 ? ((t.views / t.impressions)*100).toFixed(2)+'%' : '0.00%');
+    setLive('total-ctr', t.impressions > 0 ? ((t.views/t.impressions)*100).toFixed(2)+'%' : '0.00%');
   }
 
   if (d.campaigns) {
@@ -126,10 +214,15 @@ function applyUser(d) {
     Object.entries(d.topups).forEach(([tid, t]) => { setLiveBadge('topup:'+tid+':status', t.status); });
   }
 
+  // Update notification bell + play sound if new ones arrived
+  if (d.unread_notifications !== undefined) {
+    updateNotifBell(d.unread_notifications);
+  }
+
   window.dispatchEvent(new CustomEvent('liveStatsUpdate', { detail: d }));
 }
 
-// ── Apply admin data ─────────────────────────────────────
+// ── Apply admin data ──────────────────────────────────────
 function applyAdmin(d) {
   if (d.totals) {
     const t = d.totals;
@@ -155,6 +248,9 @@ function applyAdmin(d) {
       el.textContent   = p[k];
       el.style.display = p[k] > 0 ? '' : 'none';
     });
+
+    // Play sound when new submissions arrive
+    checkAdminNewSubmissions(p);
   }
 
   if (d.campaigns) {
@@ -186,6 +282,7 @@ function applyAdmin(d) {
 
 // ── Poll loop ─────────────────────────────────────────────
 let pollTimer = null;
+
 async function pollOnce() {
   try {
     const url = IS_ADMIN ? '/api/admin_stats.php' : '/api/live_stats.php';

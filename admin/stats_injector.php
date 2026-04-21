@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $currentBal = (float)$users[$userIdx]['balance'];
 
             if ($cost > $currentBal) {
-                flash('User has insufficient balance ($' . number_format($currentBal,4) . ') for ' . $addViews . ' views at ' . fmtMoneyPrecise($cpv) . ' CPV (needs $' . number_format($cost,4) . ')', 'error');
+                flash('User has insufficient balance ($' . number_format($currentBal,2) . ') for ' . $addViews . ' views at ' . fmtMoney($cpv) . ' CPV (needs $' . number_format($cost,2) . ')', 'error');
             } else {
                 $campaigns[$foundIdx]['impressions'] = ($campaigns[$foundIdx]['impressions'] ?? 0) + $addImp;
                 $campaigns[$foundIdx]['clicks']      = ($campaigns[$foundIdx]['clicks']      ?? 0) + $addHits;   // hits stored in clicks
@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 writeJson(STATS_FILE, $stats);
 
-                flash('Stats injected. Balance deducted: $' . number_format($cost,4) . ' (' . $addImp . ' impressions, ' . $addViews . ' views, ' . $addHits . ' hits)', 'success');
+                flash('Stats injected. Balance deducted: $' . number_format($cost,2) . ' (' . $addImp . ' impressions, ' . $addViews . ' views, ' . $addHits . ' hits)', 'success');
             }
         }
     }
@@ -116,7 +116,7 @@ $activeCampaigns = array_filter($campaigns, fn($c) => in_array($c['status'], ['a
                         data-balance="<?= $u['balance'] ?? 0 ?>"
                         data-user="<?= htmlspecialchars($u['username'] ?? 'Unknown') ?>"
                         data-status="<?= $c['status'] ?>">
-                    <?= htmlspecialchars($c['name']) ?> &mdash; <?= $c['campaign_id'] ?> (<?= htmlspecialchars($u['username'] ?? '?') ?>, <?= fmtMoneyPrecise($cpvRate) ?>/view)
+                    <?= htmlspecialchars($c['name']) ?> &mdash; <?= $c['campaign_id'] ?> (<?= htmlspecialchars($u['username'] ?? '?') ?>, <?= fmtMoney($cpvRate) ?>/view)
                 </option>
                 <?php endforeach; ?>
             </select>
@@ -187,7 +187,7 @@ $activeCampaigns = array_filter($campaigns, fn($c) => in_array($c['status'], ['a
                     </td>
                     <td><?= htmlspecialchars($u['username'] ?? 'Unknown') ?></td>
                     <td><strong style="color:var(--yellow)"><?= fmtMoney($u['balance'] ?? 0) ?></strong></td>
-                    <td><?= fmtMoneyPrecise($cpvRate) ?></td>
+                    <td><?= fmtMoney($cpvRate) ?></td>
                     <td><?= fmtNum($c['impressions'] ?? 0) ?></td>
                     <td><?= fmtNum($c['good_hits']   ?? 0) ?></td>
                     <td><?= fmtNum($c['clicks']      ?? 0) ?></td>
@@ -218,8 +218,8 @@ function updateCampInfo() {
     info.innerHTML = `
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;width:100%">
             <div><div style="font-size:11px;color:var(--text-3)">User</div><strong>${user}</strong></div>
-            <div><div style="font-size:11px;color:var(--text-3)">Balance</div><strong>$${bal.toFixed(4)}</strong></div>
-            <div><div style="font-size:11px;color:var(--text-3)">CPV</div><strong>$${cpv.toFixed(4)}</strong></div>
+            <div><div style="font-size:11px;color:var(--text-3)">Balance</div><strong>$${bal.toFixed(2)}</strong></div>
+            <div><div style="font-size:11px;color:var(--text-3)">CPV</div><strong>$${cpv.toFixed(2)}</strong></div>
             <div><div style="font-size:11px;color:var(--text-3)">Max Views Possible</div><strong>${maxViews.toLocaleString()}</strong></div>
             <div><div style="font-size:11px;color:var(--text-3)">Status</div><strong style="text-transform:capitalize">${status}</strong></div>
         </div>`;
@@ -241,10 +241,10 @@ function updateCost() {
         preview.style.display = 'flex';
         if (cost > bal) {
             preview.className = 'alert alert-danger';
-            preview.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> INSUFFICIENT BALANCE. User has $' + bal.toFixed(4) + ' but needs $' + cost.toFixed(4) + ' for ' + views + ' views.';
+            preview.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> INSUFFICIENT BALANCE. User has $' + bal.toFixed(2) + ' but needs $' + cost.toFixed(2) + ' for ' + views + ' views.';
         } else {
             preview.className = 'alert alert-warning';
-            preview.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/></svg> This will deduct <strong style="margin:0 4px">$' + cost.toFixed(4) + '</strong> from user balance. Remaining: <strong style="margin-left:4px">$' + (bal - cost).toFixed(4) + '</strong>';
+            preview.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/></svg> This will deduct <strong style="margin:0 4px">$' + cost.toFixed(2) + '</strong> from user balance. Remaining: <strong style="margin-left:4px">$' + (bal - cost).toFixed(2) + '</strong>';
         }
     } else {
         preview.style.display = 'none';
