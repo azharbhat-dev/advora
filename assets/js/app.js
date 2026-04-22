@@ -279,6 +279,55 @@ function applyAdmin(d) {
   if (d.topups) {
     Object.entries(d.topups).forEach(([tid, t]) => { setLiveBadge('topup:'+tid+':status', t.status); });
   }
+
+  // Admin notification bell
+  if (d.unread_admin_notifs !== undefined) {
+    updateAdminNotifBell(d.unread_admin_notifs);
+  }
+}
+
+let _lastAdminNotifCount = -1;
+
+function updateAdminNotifBell(count) {
+  // Update bell badge in admin topbar
+  const bell  = document.getElementById('admin-notif-bell');
+  const badge = document.getElementById('admin-notif-badge');
+  if (badge) {
+    badge.textContent   = count > 9 ? '9+' : count;
+    badge.style.display = count > 0 ? 'flex' : 'none';
+  }
+  // Update nav badge
+  const navBadge = document.getElementById('badge-admin-notifs');
+  if (navBadge) {
+    navBadge.textContent   = count > 9 ? '9+' : count;
+    navBadge.style.display = count > 0 ? '' : 'none';
+  }
+  // Play sound when count increases
+  if (_lastAdminNotifCount >= 0 && count > _lastAdminNotifCount) {
+    playAdminNotifSound();
+  }
+  _lastAdminNotifCount = count;
+}
+
+// Distinct sound for user-activity admin notifications (softer than pending-item sound)
+function playAdminNotifSound() {
+  try {
+    const ctx   = getAudioCtx();
+    const notes = [660, 880, 1100];
+    notes.forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.1);
+      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.1);
+      gain.gain.linearRampToValueAtTime(0.14, ctx.currentTime + i * 0.1 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.3);
+      osc.start(ctx.currentTime + i * 0.1);
+      osc.stop(ctx.currentTime  + i * 0.1 + 0.3);
+    });
+  } catch(e) {}
 }
 
 // ── Poll loop ─────────────────────────────────────────────

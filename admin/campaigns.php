@@ -22,6 +22,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'Your campaign "' . $c['name'] . '" was not approved.' . (!empty($c['reject_reason']) ? ' Reason: ' . $c['reject_reason'] : '')
                 );
                 flash('Campaign rejected', 'success');
+            } elseif ($action === 'set_review') {
+                $c['status'] = 'review';
+                addNotification($c['user_id'], 'manual',
+                    'Campaign Under Review',
+                    'Your campaign "' . $c['name'] . '" has been put back under review by the network.'
+                );
+                flash('Campaign set to Under Review', 'success');
             } elseif ($action === 'pause') {
                 $c['status'] = 'paused';
                 flash('Campaign paused', 'success');
@@ -162,6 +169,13 @@ $campaigns = array_reverse($campaigns);
                                 <button type="submit" class="btn btn-success btn-sm">Approve</button>
                             </form>
                             <button class="btn btn-danger btn-sm" onclick='rejectCamp("<?= $c['campaign_id'] ?>")'>Reject</button>
+                            <?php endif; ?>
+                            <?php if (in_array($c['status'], ['active','paused','rejected'])): ?>
+                            <form method="POST" style="display:inline">
+                                <input type="hidden" name="action"      value="set_review">
+                                <input type="hidden" name="campaign_id" value="<?= $c['campaign_id'] ?>">
+                                <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--blue)">Review</button>
+                            </form>
                             <?php endif; ?>
                             <?php if ($c['status'] === 'active'): ?>
                             <form method="POST" style="display:inline">

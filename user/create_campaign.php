@@ -65,6 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             writeJson(CAMPAIGNS_FILE, $campaigns);
+            addAdminNotification($user['id'], $user['username'], 'campaign_updated',
+                'Campaign Updated',
+                $user['username'] . ' updated campaign "' . $name . '" (' . $editing['campaign_id'] . ') and sent for re-review.'
+            );
             flash('Campaign updated and sent for review', 'success');
             safeRedirect('/user/campaign_view.php?id=' . urlencode($editing['campaign_id']));
         } else {
@@ -97,6 +101,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'updated_at'   => time()
             ];
             writeJson(CAMPAIGNS_FILE, $campaigns);
+            addAdminNotification($user['id'], $user['username'], 'campaign_created',
+                'New Campaign Created',
+                $user['username'] . ' created campaign "' . $name . '" (' . $campaignId . ') — CPV: ' . fmtMoney($cpv) . ', Budget: ' . fmtMoney($dailyBudget) . '/day'
+            );
             safeRedirect('/user/campaign_view.php?id=' . urlencode($campaignId) . '&new=1');
         }
     }

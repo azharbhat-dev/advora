@@ -16,7 +16,8 @@ define('STATS_FILE',         DATA_PATH . '/stats.json');
 define('SETTINGS_FILE',      DATA_PATH . '/settings.json');
 define('NETWORK_FILE',       DATA_PATH . '/network.json');
 define('NOTIFICATIONS_FILE', DATA_PATH . '/notifications.json');
-define('INSIGHTS_FILE',       DATA_PATH . '/insights.json');
+define('INSIGHTS_FILE',           DATA_PATH . '/insights.json');
+define('ADMIN_NOTIF_FILE',         DATA_PATH . '/admin_notifications.json');
 
 // ── JSON helpers ─────────────────────────────────────────
 function readJson($file, $default = []) {
@@ -255,6 +256,43 @@ function notifColor($type) {
     };
 }
 
+// ── Admin Notifications (user activity log) ──────────────
+function addAdminNotification($userId, $username, $type, $title, $message) {
+    $all   = readJson(ADMIN_NOTIF_FILE, []);
+    $all[] = [
+        'id'         => 'AN-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8)),
+        'user_id'    => $userId,
+        'username'   => $username,
+        'type'       => $type,
+        'title'      => $title,
+        'message'    => $message,
+        'read'       => false,
+        'created_at' => time(),
+    ];
+    // Keep last 500 admin notifications
+    if (count($all) > 500) $all = array_slice($all, -500);
+    writeJson(ADMIN_NOTIF_FILE, $all);
+}
+
+function getAdminNotifications($userId = null) {
+    $all = readJson(ADMIN_NOTIF_FILE, []);
+    if ($userId) {
+        return array_values(array_filter($all, fn($n) => $n['user_id'] === $userId));
+    }
+    return array_reverse($all); // newest first
+}
+
+function countUnreadAdminNotifs() {
+    $all = readJson(ADMIN_NOTIF_FILE, []);
+    return count(array_filter($all, fn($n) => !$n['read']));
+}
+
+function markAllAdminNotifsRead() {
+    $all = readJson(ADMIN_NOTIF_FILE, []);
+    foreach ($all as &$n) $n['read'] = true;
+    writeJson(ADMIN_NOTIF_FILE, $all);
+}
+
 // ── Auto-create missing data files ────────────────────────
 foreach ([
     USERS_FILE        => [],
@@ -264,6 +302,7 @@ foreach ([
     STATS_FILE        => [],
     NOTIFICATIONS_FILE=> [],
     INSIGHTS_FILE      => [],
+    ADMIN_NOTIF_FILE   => [],
 ] as $file => $default) {
     if (!file_exists($file)) writeJson($file, $default);
 }

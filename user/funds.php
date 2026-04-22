@@ -77,6 +77,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'created_at'       => time()
     ];
     writeJson(TOPUPS_FILE, $topups);
+    addAdminNotification($user['id'], $user['username'], 'deposit_submitted',
+        'Deposit Submitted',
+        $user['username'] . ' submitted a deposit of $' . number_format($amountToSend, 2) . ' via ' . $allNetworks[$network]['label'] . ' — TX: ' . substr($txid, 0, 20) . '...'
+    );
     addNotification($user['id'], 'topup_approved', 'Deposit Submitted',
         'Your deposit of $'.number_format($amountToSend,2).' via '.$allNetworks[$network]['label'].' is under review.');
     flash('Deposit submitted. It is now under review.', 'success');

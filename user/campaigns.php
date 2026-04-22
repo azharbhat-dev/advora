@@ -1,6 +1,16 @@
 <?php
 require_once __DIR__ . '/../includes/user_header.php';
 
+// Handle delete from list
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']??'') === 'delete') {
+    $delId    = $_POST['campaign_id'] ?? '';
+    $allCamps = readJson(CAMPAIGNS_FILE);
+    $allCamps = array_values(array_filter($allCamps, fn($x) => !($x['campaign_id'] === $delId && $x['user_id'] === $user['id'])));
+    writeJson(CAMPAIGNS_FILE, $allCamps);
+    flash('Campaign deleted', 'success');
+    safeRedirect('/user/campaigns.php');
+}
+
 $campaigns     = readJson(CAMPAIGNS_FILE);
 $userCampaigns = array_filter($campaigns, fn($c) => $c['user_id'] === $user['id']);
 $userCampaigns = array_reverse($userCampaigns);
@@ -89,7 +99,17 @@ if ($filter !== 'all') {
                     <td data-live="camp:<?= $cid ?>:hits"><?= fmtNum($c['clicks']??0) ?></td>
                     <td data-live="camp:<?= $cid ?>:ctr"><?= ($c['impressions']??0)>0 ? round(($c['good_hits']??0)/($c['impressions']??1)*100,2).'%' : '0%' ?></td>
                     <td style="font-size:12px;color:var(--text-2)"><?= timeAgo($c['created_at']) ?></td>
-                    <td><a href="/user/campaign_view.php?id=<?= urlencode($cid) ?>" class="btn btn-secondary btn-sm">View</a></td>
+                    <td style="display:flex;gap:5px">
+                        <a href="/user/campaign_view.php?id=<?= urlencode($cid) ?>" class="btn btn-secondary btn-sm">View</a>
+                        <form method="POST" style="display:inline"
+                              onsubmit="return confirm('Delete campaign \'<?= htmlspecialchars(addslashes($c['name'])) ?>\'? Cannot be undone.')">
+                            <input type="hidden" name="action"      value="delete">
+                            <input type="hidden" name="campaign_id" value="<?= $cid ?>">
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                            </button>
+                        </form>
+                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

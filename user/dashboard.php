@@ -74,7 +74,7 @@ $recent = array_slice(array_reverse(array_values($userCampaigns)), 0, 5);
 <div class="page-header">
   <div>
     <div class="page-title">Dashboard</div>
-    <div class="page-subtitle"><span class="live-dot"></span> Live &mdash; updates every 3.5s</div>
+    <div class="page-subtitle"><span class="live-dot"></span> Live </div>
   </div>
   <a href="/user/create_campaign.php" class="btn btn-primary">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>

@@ -26,6 +26,10 @@ $pendingCampaigns = count(array_filter(readJson(CAMPAIGNS_FILE), fn($c) => in_ar
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
     Overview
   </a>
+  <a href="/admin/user_details.php"  class="nav-item <?= $currentPage==='user_details'   ?'active':'' ?>">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    User Overview
+  </a>
   <a href="/admin/users.php"        class="nav-item <?= $currentPage==='users'          ?'active':'' ?>">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     Users
@@ -52,7 +56,12 @@ $pendingCampaigns = count(array_filter(readJson(CAMPAIGNS_FILE), fn($c) => in_ar
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><polyline points="2 12 6 8 10 12 14 6 18 10"/></svg>
     Insights
   </a>
-    <a href="/admin/notifications.php" class="nav-item <?= $currentPage==='notifications'  ?'active':'' ?>">
+    <a href="/admin/admin_notifications.php" class="nav-item <?= $currentPage==='admin_notifications' ?'active':'' ?>">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    Activity Feed
+    <span class="nav-badge" id="badge-admin-notifs" style="display:none">0</span>
+  </a>
+  <a href="/admin/notifications.php" class="nav-item <?= $currentPage==='notifications'  ?'active':'' ?>">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
     Notifications
   </a>
@@ -87,6 +96,13 @@ $pendingCampaigns = count(array_filter(readJson(CAMPAIGNS_FILE), fn($c) => in_ar
   </div>
   <div class="topbar-title">Admin &mdash; <?= ucfirst(str_replace('_',' ',$currentPage)) ?></div>
   <div class="topbar-user">
+    <!-- Admin notification bell -->
+    <a href="/admin/admin_notifications.php" id="admin-notif-bell"
+       style="position:relative;width:34px;height:34px;background:var(--bg-3);border:1px solid var(--border);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--text-2);text-decoration:none;transition:border-color .15s;flex-shrink:0"
+       onmouseover="this.style.borderColor='var(--border-hi)'" onmouseout="this.style.borderColor='var(--border)'">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span id="admin-notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:9px;font-weight:800;min-width:15px;height:15px;border-radius:8px;align-items:center;justify-content:center;border:2px solid var(--bg);padding:0 3px">0</span>
+    </a>
     <div class="balance-pill" style="background:rgba(0,229,153,.08);color:var(--green);border-color:rgba(0,229,153,.2)">
       <span class="live-dot"></span> Admin Mode
     </div>

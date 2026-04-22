@@ -1,7 +1,8 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
 header('Content-Type: application/json');
-if (!isAdmin()) { echo json_encode(['success'=>false]); exit; }
+if (!isAdmin()) { echo json_encode([
+    'unread_admin_notifs' => countUnreadAdminNotifs(),'success'=>false]); exit; }
 
 $campaigns = readJson(CAMPAIGNS_FILE);
 $users     = readJson(USERS_FILE);
@@ -54,6 +55,7 @@ $topupList = [];
 foreach ($topups as $t) { $topupList[$t['id']] = ['status' => $t['status']]; }
 
 echo json_encode([
+    'unread_admin_notifs' => countUnreadAdminNotifs(),
     'success'   => true,
     'totals'    => $totals,
     'pending'   => $pending,

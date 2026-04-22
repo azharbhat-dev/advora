@@ -17,6 +17,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_creative'])) {
         }
         $creatives = array_values(array_filter($creatives, fn($c) => !($c['id'] === $delId && $c['user_id'] === $user['id'])));
         writeJson(CREATIVES_FILE, $creatives);
+        if ($found) {
+            addAdminNotification($user['id'], $user['username'], 'creative_deleted',
+                'Creative Deleted',
+                $user['username'] . ' deleted creative "' . $found['name'] . '" (' . $delId . ')'
+            );
+        }
         flash('Creative deleted', 'success');
     } else {
         flash('Creative not found', 'error');
@@ -59,6 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload'])) {
                     'uploaded_at' => time()
                 ];
                 writeJson(CREATIVES_FILE, $creatives);
+                addAdminNotification($user['id'], $user['username'], 'creative_uploaded',
+                    'Creative Uploaded',
+                    $user['username'] . ' uploaded creative "' . $name . '" (' . $creativeId . ') — ' . number_format($file['size']/1024, 1) . ' KB'
+                );
                 flash('Creative uploaded successfully. It is now under review.', 'success');
             } else {
                 flash('Upload failed. Try again.', 'error');

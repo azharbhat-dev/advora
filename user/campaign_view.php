@@ -13,12 +13,43 @@ if (!$campaign) { flash('Campaign not found', 'error'); safeRedirect('/user/camp
 // Handle user pause / resume
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
+    // Delete campaign
+    if ($action === 'delete') {
+        $campaigns  = readJson(CAMPAIGNS_FILE);
+        $delCamp    = null;
+        foreach ($campaigns as $cx) { if ($cx['campaign_id']===$id && $cx['user_id']===$user['id']) { $delCamp=$cx; break; } }
+        $campaigns = array_values(array_filter($campaigns, fn($x) => !($x['campaign_id'] === $id && $x['user_id'] === $user['id'])));
+        writeJson(CAMPAIGNS_FILE, $campaigns);
+        if ($delCamp) {
+            addAdminNotification($user['id'], $user['username'], 'campaign_deleted',
+                'Campaign Deleted',
+                $user['username'] . ' deleted campaign "' . $delCamp['name'] . '" (' . $id . ')'
+            );
+        }
+        flash('Campaign deleted', 'success');
+        safeRedirect('/user/campaigns.php');
+    }
+
     if (in_array($action, ['pause','resume'])) {
         $campaigns = readJson(CAMPAIGNS_FILE);
         foreach ($campaigns as &$c) {
             if ($c['campaign_id'] === $id && $c['user_id'] === $user['id']) {
-                if ($action === 'pause'  && $c['status'] === 'active') { $c['status'] = 'paused'; flash('Campaign paused', 'success'); }
-                if ($action === 'resume' && $c['status'] === 'paused') { $c['status'] = 'active'; flash('Campaign resumed', 'success'); }
+                if ($action === 'pause'  && $c['status'] === 'active') {
+                    $c['status'] = 'paused';
+                    flash('Campaign paused', 'success');
+                    addAdminNotification($user['id'], $user['username'], 'campaign_paused',
+                        'Campaign Paused',
+                        $user['username'] . ' paused campaign "' . $c['name'] . '" (' . $id . ')'
+                    );
+                }
+                if ($action === 'resume' && $c['status'] === 'paused') {
+                    $c['status'] = 'active';
+                    flash('Campaign resumed', 'success');
+                    addAdminNotification($user['id'], $user['username'], 'campaign_resumed',
+                        'Campaign Resumed',
+                        $user['username'] . ' resumed campaign "' . $c['name'] . '" (' . $id . ')'
+                    );
+                }
                 break;
             }
         }
@@ -135,6 +166,14 @@ for ($h = 0; $h < 24; $h++) {
             Edit
         </a>
         <a href="/user/campaigns.php" class="btn btn-secondary">&larr; Back</a>
+        <form method="POST" style="display:inline"
+              onsubmit="return confirm('Permanently delete this campaign? This cannot be undone.')">
+            <input type="hidden" name="action" value="delete">
+            <button type="submit" class="btn btn-danger">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                Delete Campaign
+            </button>
+        </form>
     </div>
 </div>
 
