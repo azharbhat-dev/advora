@@ -128,7 +128,7 @@ $topups = array_reverse($topups);
                 <tr>
                     <td><code style="color:var(--yellow);font-size:11px"><?= $t['id'] ?></code></td>
                     <td><strong><?= htmlspecialchars($t['username']) ?></strong></td>
-                    <td><span class="badge badge-yellow"><?= htmlspecialchars($t['network']) ?></span></td>
+                    <td><span class="badge badge-yellow"><?= htmlspecialchars($t['network_label'] ?? $t['network']) ?></span></td>
                     <td><strong><?= fmtMoney($t['amount']) ?></strong></td>
                     <td style="font-size:12px;color:var(--orange)"><?= $fee > 0 ? '-'.fmtMoney($fee) : '—' ?></td>
                     <td style="font-size:12px;color:var(--green)"><strong><?= fmtMoney($credited) ?></strong></td>

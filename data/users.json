@@ -7,6 +7,27 @@
         "balance": 212.23000000000002,
         "account_type": "expert",
         "disabled": false,
-        "created_at": 1776806299
+        "created_at": 1776806299,
+        "doc_verified": true,
+        "doc_status": "verified"
+    },
+    {
+        "id": "USR-0AC1A59D",
+        "full_name": "adam",
+        "phone": "+91600612121",
+        "telegram_id": "",
+        "username": "adam",
+        "password": "$2y$12$aGRbqv76lmfLNRYkPofNZuCTj46ue3wvoHvLTsu6aYSKoJV.7QwWG",
+        "email": "adam123@gmail.com",
+        "address": "151 W 34th St",
+        "telegram": "@hexmanual",
+        "business_name": "HexLLC",
+        "business_address": "151 W 34th St",
+        "doc_status": "verified",
+        "balance": 24,
+        "account_type": "rookie",
+        "disabled": false,
+        "created_at": 1776868836,
+        "doc_verified": true
     }
 ]

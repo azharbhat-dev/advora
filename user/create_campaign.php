@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/user_header.php';
+require_once __DIR__ . '/../includes/states_data.php';
 
 $settings = getSettings();
 $creatives = readJson(CREATIVES_FILE);
@@ -18,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $cpv         = (float)($_POST['cpv'] ?? 0);
     $creativeId  = $_POST['creative_id'] ?? '';
     $countries   = $_POST['countries'] ?? [];
+    $states      = $_POST['states'] ?? [];   // array of 'CC:StateName'
     $schedule    = $_POST['schedule'] ?? [];
     $ipMode      = $_POST['ip_mode'] ?? 'off';
     $domainMode  = $_POST['domain_mode'] ?? 'off';
@@ -47,6 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $c['cpc']          = $cpv;
                     $c['creative_id']  = $creativeId;
                     $c['countries']    = $countries;
+                    $c['states']       = $states;
                     $c['schedule']     = $schedule;
                     $c['ip_mode']      = $ipMode;
                     $c['domain_mode']  = $domainMode;
@@ -74,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'cpc'          => $cpv,
                 'creative_id'  => $creativeId,
                 'countries'    => $countries,
+                'states'       => $states,
                 'schedule'     => $schedule,
                 'ip_mode'      => $ipMode,
                 'domain_mode'  => $domainMode,
@@ -157,7 +161,7 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
         <div class="form-group">
           <label class="form-label">Campaign Name *</label>
           <input type="text" name="name" id="f_name" class="form-control"
-            value="<?= htmlspecialchars($editing['name']??'') ?>" placeholder="e.g. Campaign-1">
+            value="<?= htmlspecialchars($editing['name']??'') ?>" placeholder="e.g. US Premium Push Q1 2025">
         </div>
         <div class="form-group">
           <label class="form-label">CPV Bid (USD) *</label>
@@ -210,28 +214,87 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
         </div>
       </div>
 
-      <!-- STEP 2: Countries -->
+      <!-- STEP 2: Countries + States -->
       <div class="tab-content cmp-panel-body" data-content="2">
-        <div class="form-group">
+
+        <!-- PHP: emit states data as JSON for JS -->
+        <?php
+        $statesJson = json_encode(defined('COUNTRY_STATES') ? COUNTRY_STATES : []);
+        $editingStates = $editing['states'] ?? [];
+        $editingStatesJson = json_encode(array_values($editingStates));
+        ?>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start" class="geo-grid">
+        <style>@media(max-width:820px){.geo-grid{grid-template-columns:1fr!important}}</style>
+<style>
+/* State checkbox */
+.state-cb{width:16px;height:16px;border-radius:3px;border:1.5px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:transparent;flex-shrink:0;transition:all .15s}
+.state-cb.checked{background:var(--yellow);border-color:var(--yellow);color:#000}
+#stateGrid > div:hover{background:rgba(255,200,0,.06)!important}
+#stateGrid::-webkit-scrollbar{width:5px}
+#stateGrid::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
+</style>
+
+        <!-- Left: country picker -->
+        <div class="form-group" style="margin-bottom:0">
           <label class="form-label">Target Countries *</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="selectAllCountries()">Select All</button>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="clearAllCountries()">Clear All</button>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="selectAllCountries()">All</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="clearAllCountries()">Clear</button>
             <span id="countryCount" style="margin-left:auto;color:var(--text-2);font-size:12px">0 selected</span>
           </div>
-          <div class="country-grid" id="countryGrid">
+          <div class="country-grid" id="countryGrid" style="max-height:360px">
           <?php foreach ($settings['countries'] as $country):
             $isSel = in_array($country['code'], $editing['countries']??[]);
+            $flag  = strtolower($country['code']==='UK'?'gb':$country['code']);
           ?>
-            <div class="country-item <?= $isSel?'selected':'' ?>" data-code="<?= htmlspecialchars($country['code']) ?>">
-              <img class="country-flag" src="https://flagcdn.com/w40/<?= strtolower($country['code']==='UK'?'gb':$country['code']) ?>.png" alt="<?= $country['code'] ?>">
+            <div class="country-item <?= $isSel?'selected':'' ?>"
+                 data-code="<?= htmlspecialchars($country['code']) ?>"
+                 onclick="countryClick(this)">
+              <img class="country-flag" src="https://flagcdn.com/w40/<?= $flag ?>.png" alt="<?= $country['code'] ?>">
               <span class="country-code"><?= htmlspecialchars($country['code']) ?></span>
               <span class="country-name"><?= htmlspecialchars($country['name']) ?></span>
             </div>
           <?php endforeach; ?>
           </div>
-          <div id="countryInputs"></div>
         </div>
+
+        <!-- Right: state picker (shows when a country is active) -->
+        <div>
+          <div id="statePickerWrap" style="display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <label class="form-label" style="margin:0" id="statePickerLabel">States</label>
+              <div style="display:flex;gap:6px">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="selectAllStates()">All States</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="clearAllStates()">None</button>
+              </div>
+            </div>
+            <div style="font-size:11.5px;color:var(--text-2);margin-bottom:8px">
+              Leave all unselected to target the entire country
+            </div>
+            <div id="stateGrid" style="
+              background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);
+              max-height:320px;overflow-y:auto;padding:8px;
+              display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:5px;
+            "></div>
+            <div style="margin-top:8px;font-size:12px;color:var(--text-3)" id="stateSelCount"></div>
+          </div>
+          <div id="statePickerEmpty" style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r-sm);padding:28px;text-align:center;color:var(--text-3);font-size:13px">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:8px;display:block;margin-left:auto;margin-right:auto;opacity:.4"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
+            Click a country to view<br>and select states
+          </div>
+        </div>
+
+        </div><!-- /geo-grid -->
+
+        <!-- Summary of selected geo targeting -->
+        <div id="geoSummary" style="margin-top:14px;display:none">
+          <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;font-weight:600">Selected Targeting</div>
+          <div id="geoSummaryItems" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+
+        <div id="countryInputs"></div>
+
       </div>
 
       <!-- STEP 3: Schedule -->
@@ -283,7 +346,7 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
               <input type="checkbox" name="sources[]" value="premium" <?= in_array('premium',$editingSources)?'checked':'' ?> style="display:none">
               <div class="sc-col sc-check"><div class="source-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div></div>
               <div class="sc-col sc-name"><div class="source-icon source-premium"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#0095F6"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span>Premium</span></div>
-              <div class="sc-col sc-center">1.9k</div>
+              <div class="sc-col sc-center">101</div>
               <div class="sc-col sc-center sc-price">$0.25</div>
               <div class="sc-col"><span class="source-tag">Best for start</span></div>
             </div>
@@ -292,7 +355,7 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
               <input type="checkbox" name="sources[]" value="standard" <?= in_array('standard',$editingSources)?'checked':'' ?> style="display:none">
               <div class="sc-col sc-check"><div class="source-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div></div>
               <div class="sc-col sc-name"><div class="source-icon source-standard"><svg width="16" height="16" viewBox="0 0 28 20" fill="none"><path d="M14 2l1.8 3.6 4 .58-2.9 2.83.68 3.99L14 11.1l-3.58 1.9.68-3.99L8.2 6.18l4-.58z" fill="#F59E0B"/><path d="M5 6l1.1 2.2 2.4.35-1.74 1.7.41 2.4L5 11.5l-2.17 1.15.41-2.4L1.5 8.55l2.4-.35z" fill="#F59E0B"/><path d="M23 6l1.1 2.2 2.4.35-1.74 1.7.41 2.4L23 11.5l-2.17 1.15.41-2.4-1.74-1.7 2.4-.35z" fill="#F59E0B"/></svg></div><span>Standard</span></div>
-              <div class="sc-col sc-center">2.2k</div>
+              <div class="sc-col sc-center">115</div>
               <div class="sc-col sc-center sc-price">$0.19</div>
               <div class="sc-col"><span class="source-tag">Best to scale</span></div>
             </div>
@@ -301,7 +364,7 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
               <input type="checkbox" name="sources[]" value="remnant" <?= in_array('remnant',$editingSources)?'checked':'' ?> style="display:none">
               <div class="sc-col sc-check"><div class="source-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div></div>
               <div class="sc-col sc-name"><div class="source-icon source-remnant"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="#6366F1"/><path d="M9 12l2 2 4-4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span>Remnant</span></div>
-              <div class="sc-col sc-center">4.5k</div>
+              <div class="sc-col sc-center">230</div>
               <div class="sc-col sc-center sc-price">$0.18</div>
               <div class="sc-col"><span class="source-tag">Best to buy cheap</span></div>
             </div>
@@ -310,7 +373,7 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
               <input type="checkbox" name="sources[]" value="new" <?= in_array('new',$editingSources)?'checked':'' ?> style="display:none">
               <div class="sc-col sc-check"><div class="source-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div></div>
               <div class="sc-col sc-name"><div class="source-icon source-new"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#10B981"/><path d="M12 6v6l4 2" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div><span>New</span></div>
-              <div class="sc-col sc-center">6.5k</div>
+              <div class="sc-col sc-center">250</div>
               <div class="sc-col sc-center sc-price">$0.23</div>
               <div class="sc-col"><span class="source-tag">Best to expand</span></div>
             </div>
@@ -483,7 +546,6 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
 <script>
 var totalSteps   = 8;
 var currentStep  = 0;
-var selectedCountries = <?= json_encode(array_values($editing['countries']??[])) ?>;
 var selectedSources   = <?= json_encode(array_values($editingSources)) ?>;
 
 // Error banner
@@ -550,23 +612,173 @@ function validateStep(n){
   return true;
 }
 
-// Countries
-function updateCountryInputs(){
-  var c=document.getElementById('countryInputs'); c.innerHTML='';
-  selectedCountries.forEach(function(code){ var i=document.createElement('input'); i.type='hidden'; i.name='countries[]'; i.value=code; c.appendChild(i); });
-  document.getElementById('countryCount').textContent=selectedCountries.length+' selected';
+// ── Geo targeting: countries + states ───────────────────
+const STATES_DATA  = <?= $statesJson ?>;
+var selectedCountries = <?= json_encode(array_values($editing['countries']??[])) ?>;
+var selectedStates    = <?= $editingStatesJson ?>;  // ['US:California', 'US:Texas', ...]
+var activeCountry     = null;
+
+function countryClick(el) {
+  var code = el.dataset.code;
+  var idx  = selectedCountries.indexOf(code);
+  if (idx === -1) {
+    selectedCountries.push(code);
+    el.classList.add('selected');
+  } else {
+    selectedCountries.splice(idx, 1);
+    el.classList.remove('selected');
+    // Remove states for this country
+    selectedStates = selectedStates.filter(function(s){ return s.indexOf(code+':') !== 0; });
+  }
+  updateCountryInputs();
+  openStatePicker(code);
 }
-document.querySelectorAll('#countryGrid .country-item').forEach(function(item){
-  item.addEventListener('click',function(){
-    var code=item.dataset.code, idx=selectedCountries.indexOf(code);
-    if(idx===-1){selectedCountries.push(code);item.classList.add('selected');}
-    else{selectedCountries.splice(idx,1);item.classList.remove('selected');}
-    updateCountryInputs();
+
+function openStatePicker(code) {
+  activeCountry = code;
+  var states = STATES_DATA[code] || [];
+  var wrap   = document.getElementById('statePickerWrap');
+  var empty  = document.getElementById('statePickerEmpty');
+  var grid   = document.getElementById('stateGrid');
+  var label  = document.getElementById('statePickerLabel');
+
+  if (!states.length || selectedCountries.indexOf(code) === -1) {
+    wrap.style.display  = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  wrap.style.display  = 'block';
+
+  // Get country name
+  var countryName = code;
+  document.querySelectorAll('#countryGrid .country-item').forEach(function(el){
+    if (el.dataset.code === code) countryName = el.querySelector('.country-name').textContent;
   });
-});
-function selectAllCountries(){selectedCountries=[];document.querySelectorAll('#countryGrid .country-item').forEach(function(i){selectedCountries.push(i.dataset.code);i.classList.add('selected');});updateCountryInputs();}
-function clearAllCountries(){selectedCountries=[];document.querySelectorAll('#countryGrid .country-item').forEach(function(i){i.classList.remove('selected');});updateCountryInputs();}
+  label.textContent = countryName + ' — States / Regions';
+
+  // Build state checkboxes
+  grid.innerHTML = '';
+  states.forEach(function(state) {
+    var key = code + ':' + state;
+    var checked = selectedStates.indexOf(key) !== -1;
+    var div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:5px;cursor:pointer;transition:background .1s;font-size:12.5px;user-select:none';
+    div.innerHTML = '<div class="state-cb ' + (checked?'checked':'') + '"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><span>' + state + '</span>';
+    div.addEventListener('click', function() {
+      var cb = div.querySelector('.state-cb');
+      if (selectedStates.indexOf(key) !== -1) {
+        selectedStates.splice(selectedStates.indexOf(key), 1);
+        cb.classList.remove('checked');
+        div.style.background = '';
+      } else {
+        selectedStates.push(key);
+        cb.classList.add('checked');
+        div.style.background = 'var(--yellow-dim)';
+      }
+      updateStateCount();
+      updateCountryInputs();
+    });
+    if (checked) div.style.background = 'var(--yellow-dim)';
+    grid.appendChild(div);
+  });
+
+  updateStateCount();
+}
+
+function updateStateCount() {
+  if (!activeCountry) return;
+  var count = selectedStates.filter(function(s){ return s.indexOf(activeCountry+':') === 0; }).length;
+  var total = (STATES_DATA[activeCountry] || []).length;
+  var el = document.getElementById('stateSelCount');
+  el.textContent = count > 0
+    ? count + ' of ' + total + ' states selected (targeted specifically)'
+    : 'All ' + total + ' states — no restriction (entire country)';
+}
+
+function selectAllStates() {
+  if (!activeCountry) return;
+  var states = STATES_DATA[activeCountry] || [];
+  selectedStates = selectedStates.filter(function(s){ return s.indexOf(activeCountry+':') !== 0; });
+  states.forEach(function(s){ selectedStates.push(activeCountry+':'+s); });
+  document.querySelectorAll('#stateGrid .state-cb').forEach(function(cb){
+    cb.classList.add('checked');
+    cb.parentElement.style.background = 'var(--yellow-dim)';
+  });
+  updateStateCount();
+  updateCountryInputs();
+}
+
+function clearAllStates() {
+  if (!activeCountry) return;
+  selectedStates = selectedStates.filter(function(s){ return s.indexOf(activeCountry+':') !== 0; });
+  document.querySelectorAll('#stateGrid .state-cb').forEach(function(cb){
+    cb.classList.remove('checked');
+    cb.parentElement.style.background = '';
+  });
+  updateStateCount();
+  updateCountryInputs();
+}
+
+function selectAllCountries() {
+  selectedCountries = [];
+  document.querySelectorAll('#countryGrid .country-item').forEach(function(i){
+    selectedCountries.push(i.dataset.code);
+    i.classList.add('selected');
+  });
+  updateCountryInputs();
+  if (activeCountry) openStatePicker(activeCountry);
+}
+
+function clearAllCountries() {
+  selectedCountries = [];
+  selectedStates    = [];
+  document.querySelectorAll('#countryGrid .country-item').forEach(function(i){ i.classList.remove('selected'); });
+  activeCountry = null;
+  document.getElementById('statePickerWrap').style.display  = 'none';
+  document.getElementById('statePickerEmpty').style.display = 'block';
+  updateCountryInputs();
+}
+
+function updateCountryInputs() {
+  var c = document.getElementById('countryInputs');
+  c.innerHTML = '';
+  selectedCountries.forEach(function(code) {
+    var i = document.createElement('input'); i.type='hidden'; i.name='countries[]'; i.value=code; c.appendChild(i);
+  });
+  selectedStates.forEach(function(sv) {
+    // Only include states for selected countries
+    var cc = sv.split(':')[0];
+    if (selectedCountries.indexOf(cc) !== -1) {
+      var i = document.createElement('input'); i.type='hidden'; i.name='states[]'; i.value=sv; c.appendChild(i);
+    }
+  });
+  document.getElementById('countryCount').textContent = selectedCountries.length + ' selected';
+  updateGeoSummary();
+}
+
+function updateGeoSummary() {
+  var wrap  = document.getElementById('geoSummary');
+  var items = document.getElementById('geoSummaryItems');
+  if (selectedCountries.length === 0) { wrap.style.display='none'; return; }
+  wrap.style.display = 'block';
+  items.innerHTML = '';
+  selectedCountries.forEach(function(code) {
+    var countStates = selectedStates.filter(function(s){ return s.indexOf(code+':') === 0; }).length;
+    var badge = document.createElement('span');
+    badge.className = 'badge badge-yellow';
+    badge.style.cssText = 'cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:4px 10px';
+    badge.textContent = code + (countStates > 0 ? ' ('+countStates+' states)' : ' — All');
+    badge.onclick = function(){ openStatePicker(code); };
+    items.appendChild(badge);
+  });
+}
+
+// Init
 updateCountryInputs();
+// Pre-open first selected country's state picker
+if (selectedCountries.length > 0) openStatePicker(selectedCountries[0]);
 
 // Creative highlight
 document.querySelectorAll('.creative-card').forEach(function(card){
@@ -678,9 +890,16 @@ function buildSummary(){
     return '<div class="summary-item"><div class="summary-label">'+it[0]+'</div><div class="summary-value" style="font-size:14px">'+it[1]+'</div></div>';
   }).join('');
 
-  document.getElementById('reviewCountries').innerHTML=selectedCountries.length>0
-    ?'<div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;font-weight:600">Targeted Countries</div><div style="display:flex;gap:5px;flex-wrap:wrap">'+selectedCountries.map(function(c){return'<span class="badge badge-yellow">'+c+'</span>';}).join('')+'</div>'
-    :'';
+  var geoHtml = '';
+  if (selectedCountries.length > 0) {
+    geoHtml += '<div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;font-weight:600">Geo Targeting</div><div style="display:flex;gap:5px;flex-wrap:wrap">';
+    selectedCountries.forEach(function(code) {
+      var countS = selectedStates.filter(function(s){ return s.indexOf(code+':') === 0; }).length;
+      geoHtml += '<span class="badge badge-yellow" style="cursor:pointer" title="Click to see states">' + code + (countS > 0 ? ' <span style=\'opacity:.7\'>+'+countS+' states</span>' : ' — All') + '</span>';
+    });
+    geoHtml += '</div>';
+  }
+  document.getElementById('reviewCountries').innerHTML = geoHtml;
 
   document.getElementById('reviewSources').innerHTML=selectedSources.length>0
     ?'<div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;font-weight:600">Traffic Sources</div><div style="display:flex;gap:5px;flex-wrap:wrap">'+selectedSources.map(function(s){return'<span class="badge badge-info">'+(srcLabels[s]||s)+'</span>';}).join('')+'</div>'

@@ -94,7 +94,7 @@ $campaigns = array_reverse($campaigns);
                     <th>Hits</th>
                     <th>Sources</th>
                     <th>Delivery</th>
-                    <th>Countries</th>
+                    <th>Countries / States</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -132,7 +132,27 @@ $campaigns = array_reverse($campaigns);
                         <?php else: ?><span style="color:var(--text-3);font-size:12px">—</span><?php endif; ?>
                     </td>
                     <td style="font-size:12px;text-transform:capitalize"><?= htmlspecialchars($delivery) ?></td>
-                    <td><?= count($c['countries']??[]) ?></td>
+                    <td>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px">
+                        <?php foreach ($c['countries']??[] as $cc):
+                          $flag = strtolower($cc==='UK'?'gb':$cc);
+                          $campStates = array_filter($c['states']??[], fn($s) => strpos($s, $cc.':')===0);
+                          $stateCount = count($campStates);
+                        ?>
+                        <div style="display:inline-flex;align-items:center;gap:4px;background:var(--bg-3);border:1px solid var(--border);border-radius:5px;padding:3px 7px;cursor:pointer"
+                             title="<?= $stateCount>0 ? htmlspecialchars(implode(', ', array_map(fn($s)=>explode(':',$s)[1]??$s, array_values($campStates)))) : 'All states' ?>"
+                             onclick="showStates(this)">
+                          <img src="https://flagcdn.com/w40/<?= $flag ?>.png" style="width:16px;height:11px;border-radius:1px;object-fit:cover">
+                          <span style="font-size:11px;font-weight:600"><?= $cc ?></span>
+                          <?php if ($stateCount > 0): ?>
+                          <span style="font-size:10px;background:var(--yellow-dim);color:var(--yellow);padding:1px 5px;border-radius:3px"><?= $stateCount ?></span>
+                          <?php else: ?>
+                          <span style="font-size:10px;color:var(--text-3)">All</span>
+                          <?php endif; ?>
+                        </div>
+                        <?php endforeach; ?>
+                        </div>
+                    </td>
                     <td>
                         <div style="display:flex;gap:4px;flex-wrap:wrap">
                             <?php if (in_array($c['status'], ['pending','review'])): ?>
@@ -202,4 +222,38 @@ function rejectCamp(id) {
 }
 </script>
 
+
+<!-- States detail modal -->
+<div class="modal" id="statesModal">
+  <div class="modal-box" style="max-width:500px">
+    <div class="modal-header">
+      <div class="modal-title" id="statesModalTitle">States / Regions</div>
+      <div class="modal-close" onclick="closeModal('statesModal')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </div>
+    </div>
+    <div id="statesModalBody" style="display:flex;flex-wrap:wrap;gap:6px;max-height:400px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<script>
+function showStates(el) {
+  var title = el.querySelector('span').textContent + ' — States';
+  var tip   = el.getAttribute('title');
+  document.getElementById('statesModalTitle').textContent = title;
+  var body  = document.getElementById('statesModalBody');
+  body.innerHTML = '';
+  if (!tip || tip === 'All states') {
+    body.innerHTML = '<div style="color:var(--text-2);font-size:13px">Targeting all states in this country</div>';
+  } else {
+    tip.split(', ').forEach(function(s) {
+      var sp = document.createElement('span');
+      sp.className = 'badge badge-yellow';
+      sp.textContent = s.trim();
+      body.appendChild(sp);
+    });
+  }
+  openModal('statesModal');
+}
+</script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

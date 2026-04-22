@@ -7,5 +7,14 @@
         "clicks": 1,
         "good_hits": 2,
         "spent": 2
+    },
+    {
+        "user_id": "USR-0AC1A59D",
+        "campaign_id": "CMP-42451BCE",
+        "date": "2026-04-22",
+        "impressions": 30,
+        "clicks": 1312,
+        "good_hits": 152,
+        "spent": 76
     }
 ]

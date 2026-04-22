@@ -37,8 +37,8 @@ const IS_ADMIN = document.body.dataset.role === 'admin';
 const POLL_MS  = 3500;
 
 function n(v)     { return Number(v).toLocaleString(); }
-function money(v) { return '$' + parseFloat(v).toFixed(2); }
-function pct(a,b) { return b > 0 ? ((a/b)*100).toFixed(2) + '%' : '0.00%'; }
+function money(v) { const n = parseFloat(v); return '$' + (isNaN(n) ? '0.00' : n.toFixed(2)); }
+function pct(a,b) { const r = (parseFloat(b)||0) > 0 ? ((parseFloat(a)||0)/(parseFloat(b)||1)*100) : 0; return (isNaN(r)?0:r).toFixed(2)+'%'; }
 
 const BADGE_CLASS = {
   active:'badge-success', pending:'badge-pending', paused:'badge-muted',
@@ -187,7 +187,8 @@ function applyUser(d) {
     setLive('total-views',       n(t.views));
     setLive('total-hits',        n(t.hits));
     setLiveMoney('total-spent',  t.spent);
-    setLive('total-ctr', t.impressions > 0 ? ((t.views/t.impressions)*100).toFixed(2)+'%' : '0.00%');
+    const _imp = parseFloat(t.impressions)||0, _vw = parseFloat(t.views)||0;
+    setLive('total-ctr', _imp > 0 ? ((_vw/_imp)*100).toFixed(2)+'%' : '0.00%');
   }
 
   if (d.campaigns) {
@@ -200,7 +201,7 @@ function applyUser(d) {
       setLive(p+'ctr',         pct(c.views, c.impressions));
       setLiveBadge(p+'status', c.status);
       if (c.budget > 0) {
-        const pctVal = Math.min(100, (c.spent/c.budget)*100).toFixed(1);
+        const pctVal = c.budget > 0 ? Math.min(100, (c.spent/c.budget)*100).toFixed(1) : '0.0';
         document.querySelectorAll('[data-live="'+p+'budget-pct"]').forEach(el => { el.style.width = pctVal+'%'; });
       }
     });

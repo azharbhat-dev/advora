@@ -43,16 +43,24 @@
     ],
     "wallets": {
         "BTC": {
-            "address": "bc1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "address": "tt",
             "network": "Bitcoin"
         },
         "TRC20": {
-            "address": "TXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "address": "ttt",
             "network": "Tron TRC20 (USDT)"
         },
         "SOL": {
             "address": "SoLxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
             "network": "Solana"
+        },
+        "ERC20": {
+            "address": "tt",
+            "network": "Ethereum ERC20 (USDT)"
+        },
+        "BEP20": {
+            "address": "ttt",
+            "network": "BNB Smart Chain BEP20 (USDT)"
         }
     }
 }

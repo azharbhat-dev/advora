@@ -21,6 +21,15 @@ $userStats = array_filter($stats, fn($s) => $s['user_id'] === $user['id']);
 // We have daily granularity so show today vs yesterday as 2 points,
 // then fill 24 hour labels distributing evenly
 $chartLabels = $chartViews = $chartImpressions = $chartHits = $chartSpend = $chartCtr = [];
+
+// Sanitize chart array: replace any non-finite values with 0
+function sanitizeChartData(array $arr): array {
+    return array_map(function($v) {
+        $f = (float)$v;
+        return (is_finite($f) && !is_nan($f)) ? $f : 0;
+    }, $arr);
+}
+
 $cstTz     = new DateTimeZone('America/Chicago');
 $cstNow    = new DateTime('now', $cstTz);
 $today     = $cstNow->format('Y-m-d');
@@ -65,7 +74,7 @@ $recent = array_slice(array_reverse(array_values($userCampaigns)), 0, 5);
 <div class="page-header">
   <div>
     <div class="page-title">Dashboard</div>
-    <div class="page-subtitle"><span class="live-dot"></span> Live </div>
+    <div class="page-subtitle"><span class="live-dot"></span> Live &mdash; updates every 3.5s</div>
   </div>
   <a href="/user/create_campaign.php" class="btn btn-primary">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -160,12 +169,17 @@ $recent = array_slice(array_reverse(array_values($userCampaigns)), 0, 5);
 </style>
 
 <script>
+
+// Safe number helper for chart
+function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function safeFixed(v, d) { const n = parseFloat(v); return isNaN(n) ? (0).toFixed(d) : n.toFixed(d); }
+
 const gaAllData = {
-  views:       { data: <?= json_encode($chartViews) ?>,       color: '#1a73e8', fill: 'rgba(26,115,232,0.1)',   label: 'Views' },
-  impressions: { data: <?= json_encode($chartImpressions) ?>, color: '#e8710a', fill: 'rgba(232,113,10,0.1)',   label: 'Impressions' },
-  hits:        { data: <?= json_encode($chartHits) ?>,        color: '#34a853', fill: 'rgba(52,168,83,0.1)',    label: 'Hits' },
-  spend:       { data: <?= json_encode($chartSpend) ?>,       color: '#ea4335', fill: 'rgba(234,67,53,0.1)',    label: 'Spend ($)' },
-  ctr:         { data: <?= json_encode($chartCtr) ?>,         color: '#9334e8', fill: 'rgba(147,52,232,0.1)',   label: 'CTR (%)' }
+  views:       { data: <?= json_encode(sanitizeChartData($chartViews)) ?>,       color: '#1a73e8', fill: 'rgba(26,115,232,0.1)',   label: 'Views' },
+  impressions: { data: <?= json_encode(sanitizeChartData($chartImpressions)) ?>, color: '#e8710a', fill: 'rgba(232,113,10,0.1)',   label: 'Impressions' },
+  hits:        { data: <?= json_encode(sanitizeChartData($chartHits)) ?>,        color: '#34a853', fill: 'rgba(52,168,83,0.1)',    label: 'Hits' },
+  spend:       { data: <?= json_encode(sanitizeChartData($chartSpend)) ?>,       color: '#ea4335', fill: 'rgba(234,67,53,0.1)',    label: 'Spend ($)' },
+  ctr:         { data: <?= json_encode(sanitizeChartData($chartCtr)) ?>,         color: '#9334e8', fill: 'rgba(147,52,232,0.1)',   label: 'CTR (%)' }
 };
 const gaLabels = <?= json_encode($chartLabels) ?>;
 let gaActive = 'views';
@@ -209,7 +223,7 @@ const gaChart = new Chart(document.getElementById('gaChart').getContext('2d'), {
         callbacks: {
           title: items => items[0].label,
           label: ctx => {
-            const v = ctx.raw;
+            const v = parseFloat(ctx.raw) || 0;
             if (gaActive === 'spend') return '  ' + ctx.dataset.label + ': $' + v.toFixed(2);
             if (gaActive === 'ctr')   return '  ' + ctx.dataset.label + ': ' + v.toFixed(2) + '%';
             return '  ' + ctx.dataset.label + ': ' + Number(v).toLocaleString();
@@ -230,7 +244,7 @@ const gaChart = new Chart(document.getElementById('gaChart').getContext('2d'), {
         ticks:  {
           color: '#8888a8',
           font:  { size: 11 },
-          callback: v => gaActive==='spend' ? '$'+v : (gaActive==='ctr' ? v+'%' : Number(v).toLocaleString())
+          callback: v => { const n=parseFloat(v)||0; return gaActive==='spend'?'$'+n.toFixed(2):(gaActive==='ctr'?n.toFixed(2)+'%':Number(n).toLocaleString()); }
         }
       }
     },

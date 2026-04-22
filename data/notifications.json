@@ -79,5 +79,59 @@
         "message": "$117.73 has been added to your balance.",
         "read": false,
         "created_at": 1776808633
+    },
+    {
+        "id": "N-99BFAB9E",
+        "user_id": "USR-0AC1A59D",
+        "type": "topup_approved",
+        "title": "Deposit Submitted",
+        "message": "Your deposit of $103.63 via USDT \u2014 ERC20 is under review.",
+        "read": false,
+        "created_at": 1776869252
+    },
+    {
+        "id": "N-CFB45BF0",
+        "user_id": "USR-0AC1A59D",
+        "type": "topup_approved",
+        "title": "Deposit Approved",
+        "message": "$100.00 has been added to your balance.",
+        "read": false,
+        "created_at": 1776869270
+    },
+    {
+        "id": "N-1EF234C2",
+        "user_id": "USR-0AC1A59D",
+        "type": "creative_approved",
+        "title": "Creative Approved",
+        "message": "Your creative \"camp1\" has been approved and is ready to use in campaigns.",
+        "read": false,
+        "created_at": 1776869319
+    },
+    {
+        "id": "N-49DB6508",
+        "user_id": "USR-0AC1A59D",
+        "type": "campaign_approved",
+        "title": "Campaign Approved",
+        "message": "Your campaign \"sultan\" has been approved and is now live.",
+        "read": false,
+        "created_at": 1776869392
+    },
+    {
+        "id": "N-B9837815",
+        "user_id": "USR-F7F6F7EB",
+        "type": "manual",
+        "title": "hi",
+        "message": "hi",
+        "read": false,
+        "created_at": 1776870085
+    },
+    {
+        "id": "N-CC31EE07",
+        "user_id": "USR-0AC1A59D",
+        "type": "manual",
+        "title": "hi",
+        "message": "hi",
+        "read": false,
+        "created_at": 1776870085
     }
 ]

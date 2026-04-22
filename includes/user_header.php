@@ -124,7 +124,9 @@ $acct = $acctConfig[$accountType] ?? $acctConfig['rookie'];
       <span data-live-balance><?= fmtMoney($user['balance']) ?></span>
     </div>
 
-    <div class="user-avatar"><?= strtoupper(substr($user['username'],0,1)) ?></div>
+    <a href="/user/profile.php" title="Profile" style="position:relative;display:flex;align-items:center;justify-content:center;text-decoration:none" class="user-avatar-link">
+      <div class="user-avatar" style="cursor:pointer;transition:all .2s" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'"><?= strtoupper(substr($user['username'],0,1)) ?></div>
+    </a>
   </div>
 </header>
 

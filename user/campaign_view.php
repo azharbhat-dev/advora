@@ -46,6 +46,15 @@ $statusLabel = $campaign['status'] === 'review' ? 'Under Review' : $campaign['st
 $allStats  = readJson(STATS_FILE);
 $campStats = array_filter($allStats, fn($s) => ($s['campaign_id'] ?? '') === $campaign['campaign_id']);
 
+
+// Sanitize chart array: replace any non-finite values with 0
+function sanitizeChartData(array $arr): array {
+    return array_map(function($v) {
+        $f = (float)$v;
+        return (is_finite($f) && !is_nan($f)) ? $f : 0;
+    }, $arr);
+}
+
 $cstTz     = new DateTimeZone('America/Chicago');
 $cstNow    = new DateTime('now', $cstTz);
 $nowHour   = (int)$cstNow->format('G');
@@ -180,8 +189,9 @@ for ($h = 0; $h < 24; $h++) {
 <!-- Google Ads style chart -->
 <div class="card" style="padding:0;overflow:hidden">
   <div class="ga-metrics-row">
-    <div class="ga-metric active" data-metric="views"       data-color="#1a73e8" onclick="gaSwitch(this)"><div class="gam-label">Views</div><div class="gam-value"><?= fmtNum($campaign['good_hits']??0) ?></div></div>
     <div class="ga-metric"        data-metric="impressions" data-color="#e8710a" onclick="gaSwitch(this)"><div class="gam-label">Impressions</div><div class="gam-value"><?= fmtNum($campaign['impressions']??0) ?></div></div>
+    <div class="ga-metric active" data-metric="views"       data-color="#1a73e8" onclick="gaSwitch(this)"><div class="gam-label">Views</div><div class="gam-value"><?= fmtNum($campaign['good_hits']??0) ?></div></div>
+    
     <div class="ga-metric"        data-metric="hits"        data-color="#34a853" onclick="gaSwitch(this)"><div class="gam-label">Hits</div><div class="gam-value"><?= fmtNum($campaign['clicks']??0) ?></div></div>
     <div class="ga-metric"        data-metric="spend"       data-color="#ea4335" onclick="gaSwitch(this)"><div class="gam-label">Spend</div><div class="gam-value"><?= fmtMoney($campaign['spent']??0) ?></div></div>
     <div class="ga-metric"        data-metric="ctr"         data-color="#9334e8" onclick="gaSwitch(this)"><div class="gam-label">CTR</div><div class="gam-value"><?= $ctr ?>%</div></div>
@@ -245,12 +255,17 @@ for ($h = 0; $h < 24; $h++) {
 </style>
 
 <script>
+
+// Safe number helper for chart
+function safeNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function safeFixed(v, d) { const n = parseFloat(v); return isNaN(n) ? (0).toFixed(d) : n.toFixed(d); }
+
 const gaAllData = {
-  views:       { data: <?= json_encode($chartViews) ?>,       color: '#1a73e8', fill: 'rgba(26,115,232,0.1)',  label: 'Views' },
-  impressions: { data: <?= json_encode($chartImpressions) ?>, color: '#e8710a', fill: 'rgba(232,113,10,0.1)',  label: 'Impressions' },
-  hits:        { data: <?= json_encode($chartHits) ?>,        color: '#34a853', fill: 'rgba(52,168,83,0.1)',   label: 'Hits' },
-  spend:       { data: <?= json_encode($chartSpend) ?>,       color: '#ea4335', fill: 'rgba(234,67,53,0.1)',   label: 'Spend ($)' },
-  ctr:         { data: <?= json_encode($chartCtr) ?>,         color: '#9334e8', fill: 'rgba(147,52,232,0.1)',  label: 'CTR (%)' }
+  views:       { data: <?= json_encode(sanitizeChartData($chartViews)) ?>,       color: '#1a73e8', fill: 'rgba(26,115,232,0.1)',  label: 'Views' },
+  impressions: { data: <?= json_encode(sanitizeChartData($chartImpressions)) ?>, color: '#e8710a', fill: 'rgba(232,113,10,0.1)',  label: 'Impressions' },
+  hits:        { data: <?= json_encode(sanitizeChartData($chartHits)) ?>,        color: '#34a853', fill: 'rgba(52,168,83,0.1)',   label: 'Hits' },
+  spend:       { data: <?= json_encode(sanitizeChartData($chartSpend)) ?>,       color: '#ea4335', fill: 'rgba(234,67,53,0.1)',   label: 'Spend ($)' },
+  ctr:         { data: <?= json_encode(sanitizeChartData($chartCtr)) ?>,         color: '#9334e8', fill: 'rgba(147,52,232,0.1)',  label: 'CTR (%)' }
 };
 const gaLabels = <?= json_encode($chartLabels) ?>;
 let gaActive   = 'views';
@@ -309,7 +324,7 @@ function gaSwitch(el) {
   el.style.setProperty('--ga-color', el.dataset.color);
   gaActive = el.dataset.metric;
   const d = gaAllData[gaActive];
-  gaChart.data.datasets[0].data            = d.data;
+  gaChart.data.datasets[0].data            = d.data.map(v => parseFloat(v)||0);
   gaChart.data.datasets[0].label           = d.label;
   gaChart.data.datasets[0].borderColor     = d.color;
   gaChart.data.datasets[0].backgroundColor = d.fill;

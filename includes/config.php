@@ -55,6 +55,24 @@ function requireUser() {
     if (!isUser()) {
         ob_end_clean(); header('Location: /login.php'); exit;
     }
+    // Re-read user on every request to catch disabled status in real time
+    $users = readJson(USERS_FILE);
+    foreach ($users as $u) {
+        if ($u['id'] === $_SESSION['user_id']) {
+            if (!empty($u['disabled'])) {
+                session_destroy();
+                ob_end_clean();
+                header('Location: /login.php?disabled=1');
+                exit;
+            }
+            return; // valid active user
+        }
+    }
+    // User not found in DB anymore
+    session_destroy();
+    ob_end_clean();
+    header('Location: /login.php');
+    exit;
 }
 
 function currentUser() {
@@ -95,11 +113,19 @@ function getSettings() {
         'wallets' => [
             'BTC'   => ['address' => 'bc1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',  'network' => 'Bitcoin'],
             'TRC20' => ['address' => 'TXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',   'network' => 'Tron TRC20 (USDT)'],
+            'ERC20' => ['address' => 'TXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',   'network' => 'Ethereum ERC20 (USDT)'],
+            'BEP20' => ['address' => 'TXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',   'network' => 'BNB Smart Chain BEP20 (USDT)'],
         ]
     ];
     $s = readJson(SETTINGS_FILE, $defaults);
     if (!isset($s['countries'])) $s['countries'] = $defaults['countries'];
     if (!isset($s['wallets']))   $s['wallets']   = $defaults['wallets'];
+    // Merge in any new wallet defaults that don't yet exist in saved settings
+    foreach ($defaults['wallets'] as $code => $def) {
+        if (!isset($s['wallets'][$code])) {
+            $s['wallets'][$code] = $def;
+        }
+    }
     return $s;
 }
 

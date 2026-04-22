@@ -56,5 +56,21 @@
         "screenshot": "SS-69AF2E89.png",
         "status": "pending",
         "created_at": 1776808619
+    },
+    {
+        "id": "TX-FC94E470",
+        "user_id": "USR-0AC1A59D",
+        "username": "adam",
+        "network": "USDT_ERC20",
+        "network_label": "USDT \u2014 ERC20",
+        "address": "tt",
+        "amount": 103.63,
+        "fee": 3.63,
+        "amount_after_fee": 100,
+        "txid": "asdasdasd",
+        "screenshot": "SS-D939A629.png",
+        "status": "approved",
+        "created_at": 1776869252,
+        "approved_at": 1776869270
     }
 ]
