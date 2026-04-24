@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/admin_header.php';
 
-$subFile = DATA_PATH . '/subscriptions.json';
 $defaultPlans = [
     ['id'=>'starter','name'=>'Starter','price'=>150,'campaigns'=>2,'tagline'=>'Perfect for getting started','features'=>['2 Active Campaigns','HTML Creative Uploads','Basic Analytics','Email Support'],'active'=>true],
     ['id'=>'pro','name'=>'Pro','price'=>300,'campaigns'=>3,'tagline'=>'For growing advertisers','features'=>['3 Active Campaigns','Priority Review','Advanced Analytics','URL Tracking','Priority Support'],'active'=>true],
@@ -9,22 +8,26 @@ $defaultPlans = [
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    $plans = readJson($subFile, $defaultPlans);
+    $plans  = readJson('subscriptions', $defaultPlans);
 
     if ($action === 'create') {
-        $name = trim($_POST['plan_name'] ?? '');
-        $price = (float)($_POST['price'] ?? 0);
-        $campaigns = (int)($_POST['campaigns'] ?? 1);
-        $tagline = trim($_POST['tagline'] ?? '');
+        $name        = trim($_POST['plan_name'] ?? '');
+        $price       = (float)($_POST['price'] ?? 0);
+        $campaigns   = (int)($_POST['campaigns'] ?? 1);
+        $tagline     = trim($_POST['tagline'] ?? '');
         $featuresRaw = trim($_POST['features'] ?? '');
-        $features = array_values(array_filter(array_map('trim', explode("\n", $featuresRaw))));
+        $features    = array_values(array_filter(array_map('trim', explode("\n", $featuresRaw))));
         if ($name && $price > 0) {
             $plans[] = [
-                'id' => 'plan_' . strtolower(preg_replace('/[^a-z0-9]/i','_',$name)) . '_' . time(),
-                'name' => $name, 'price' => $price, 'campaigns' => $campaigns,
-                'tagline' => $tagline, 'features' => $features, 'active' => true
+                'id'        => 'plan_' . strtolower(preg_replace('/[^a-z0-9]/i','_',$name)) . '_' . time(),
+                'name'      => $name,
+                'price'     => $price,
+                'campaigns' => $campaigns,
+                'tagline'   => $tagline,
+                'features'  => $features,
+                'active'    => true,
             ];
-            writeJson($subFile, $plans);
+            writeJson('subscriptions', $plans);
             flash('Plan created', 'success');
         } else {
             flash('Name and price are required', 'error');
@@ -34,19 +37,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ($plans as &$p) {
             if ($p['id'] === $planId) { $p['active'] = !($p['active'] ?? true); break; }
         }
-        writeJson($subFile, $plans);
+        writeJson('subscriptions', $plans);
         flash('Plan updated', 'success');
     } elseif ($action === 'delete') {
         $planId = $_POST['plan_id'] ?? '';
-        $plans = array_values(array_filter($plans, fn($p) => $p['id'] !== $planId));
-        writeJson($subFile, $plans);
+        $plans  = array_values(array_filter($plans, fn($p) => $p['id'] !== $planId));
+        writeJson('subscriptions', $plans);
         flash('Plan deleted', 'success');
     }
     safeRedirect('/admin/subscriptions.php');
 }
 
-if (!file_exists($subFile)) writeJson($subFile, $defaultPlans);
-$plans = readJson($subFile, $defaultPlans);
+// Load plans from DB; seed defaults on first visit if table is empty
+$plans = readJson('subscriptions', []);
+if (empty($plans)) {
+    writeJson('subscriptions', $defaultPlans);
+    $plans = $defaultPlans;
+}
 ?>
 
 <div class="page-header">

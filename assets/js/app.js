@@ -1,5 +1,5 @@
 /* =========================================================
-   Advora — app.js
+   Advora — app.js (live charts)
    ========================================================= */
 
 // ── Modals ───────────────────────────────────────────────
@@ -65,117 +65,102 @@ function setLiveBadge(key, status) {
 }
 
 // ── Sound System ─────────────────────────────────────────
-// All sounds generated via Web Audio API — no external files needed
-
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let _audioCtx  = null;
+function getAudioCtx() { if (!_audioCtx) _audioCtx = new AudioCtx(); return _audioCtx; }
 
-function getAudioCtx() {
-  if (!_audioCtx) _audioCtx = new AudioCtx();
-  return _audioCtx;
-}
-
-// User notification chime — soft two-tone ding
 function playNotifSound() {
   try {
     const ctx = getAudioCtx();
-    const notes = [880, 1100]; // A5, C#6 — pleasant chime
-    notes.forEach((freq, i) => {
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type      = 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.12);
-      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.12);
-      gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + i * 0.12 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.35);
-      osc.start(ctx.currentTime + i * 0.12);
-      osc.stop(ctx.currentTime  + i * 0.12 + 0.35);
+    [880, 1100].forEach((freq, i) => {
+      const osc=ctx.createOscillator(), gain=ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type='sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + i*0.12);
+      gain.gain.setValueAtTime(0, ctx.currentTime + i*0.12);
+      gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + i*0.12 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.12 + 0.35);
+      osc.start(ctx.currentTime + i*0.12); osc.stop(ctx.currentTime + i*0.12 + 0.35);
     });
-  } catch(e) {}
+  } catch(e){}
 }
-
-// Admin alert sound — sharper ping for incoming submissions
 function playAdminSound() {
   try {
-    const ctx  = getAudioCtx();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'triangle';
+    const ctx=getAudioCtx(), osc=ctx.createOscillator(), gain=ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type='triangle';
     osc.frequency.setValueAtTime(660, ctx.currentTime);
     osc.frequency.linearRampToValueAtTime(880, ctx.currentTime + 0.08);
     gain.gain.setValueAtTime(0.22, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.4);
-  } catch(e) {}
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+  } catch(e){}
 }
 
-// Unlock audio on first user gesture (browser autoplay policy)
 let _audioUnlocked = false;
 function unlockAudio() {
   if (_audioUnlocked) return;
   _audioUnlocked = true;
   try {
-    const ctx = getAudioCtx();
-    const buf = ctx.createBuffer(1,1,22050);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.connect(ctx.destination);
-    src.start(0);
-  } catch(e) {}
+    const ctx=getAudioCtx(), buf=ctx.createBuffer(1,1,22050), src=ctx.createBufferSource();
+    src.buffer=buf; src.connect(ctx.destination); src.start(0);
+  } catch(e){}
 }
 document.addEventListener('click',      unlockAudio, { once: true });
 document.addEventListener('keydown',    unlockAudio, { once: true });
 document.addEventListener('touchstart', unlockAudio, { once: true });
 
-// ── Notification bell updater (user side) ─────────────────
-let _lastUnreadCount = -1; // -1 = not yet initialised
-
+// ── Notification bell ────────────────────────────────────
+let _lastUnreadCount = -1;
 function updateNotifBell(count) {
-  // Update bell badge in topbar
-  const badge = document.querySelector('.topbar-badge');
+  const badge    = document.querySelector('.topbar-badge');
   const navBadge = document.querySelector('.nav-item[href="/user/notifications.php"] .nav-badge');
-
-  if (badge) {
-    if (count > 0) {
-      badge.textContent    = count > 9 ? '9+' : count;
-      badge.style.display  = 'flex';
-    } else {
-      badge.style.display  = 'none';
-    }
-  }
-  if (navBadge) {
-    if (count > 0) {
-      navBadge.textContent   = count;
-      navBadge.style.display = '';
-    } else {
-      navBadge.style.display = 'none';
-    }
-  }
-
-  // Play sound only when count genuinely increases
-  if (_lastUnreadCount >= 0 && count > _lastUnreadCount) {
-    playNotifSound();
-  }
+  if (badge)    { if (count > 0) { badge.textContent    = count > 9 ? '9+' : count; badge.style.display    = 'flex'; } else badge.style.display    = 'none'; }
+  if (navBadge) { if (count > 0) { navBadge.textContent = count;                    navBadge.style.display = '';     } else navBadge.style.display = 'none'; }
+  if (_lastUnreadCount >= 0 && count > _lastUnreadCount) playNotifSound();
   _lastUnreadCount = count;
 }
 
-// ── Admin pending tracker ─────────────────────────────────
+// ── Admin pending tracker ────────────────────────────────
 let _lastPendingTotal = -1;
-
 function checkAdminNewSubmissions(pending) {
-  const total = (pending.campaigns || 0) + (pending.creatives || 0) + (pending.topups || 0);
-  if (_lastPendingTotal >= 0 && total > _lastPendingTotal) {
-    playAdminSound();
-  }
+  const total = (pending.campaigns||0) + (pending.creatives||0) + (pending.topups||0);
+  if (_lastPendingTotal >= 0 && total > _lastPendingTotal) playAdminSound();
   _lastPendingTotal = total;
 }
 
-// ── Apply user data ───────────────────────────────────────
+// ════════════════════════════════════════════════════════
+// LIVE CHART SUPPORT
+// Pages register their chart via window.registerLiveChart(...)
+// The poll loop feeds new data on every tick.
+// ════════════════════════════════════════════════════════
+window._liveChart = null;       // dashboard OR campaign chart
+window._liveChartMode = 'user'; // 'user' → use d.chart, 'campaign' → use d.camp_charts[id]
+window._liveCampaignId = null;
+
+window.registerLiveChart = function(chartInstance, mode, campaignId) {
+  window._liveChart      = chartInstance;
+  window._liveChartMode  = mode || 'user';
+  window._liveCampaignId = campaignId || null;
+};
+
+function feedChart(chartData) {
+  const chart = window._liveChart;
+  if (!chart || !chartData) return;
+  // Figure out which metric is currently active (dataset label-based)
+  const activeKey = (window.gaActive || 'views');
+  const keyMap = {
+    views: 'views', impressions: 'impressions', hits: 'hits', spend: 'spend', ctr: 'ctr'
+  };
+  const k = keyMap[activeKey] || 'views';
+  const newData = chartData[k] || [];
+  const newLabels = chartData.labels || [];
+  chart.data.labels            = newLabels;
+  chart.data.datasets[0].data  = newData.map(v => parseFloat(v) || 0);
+  chart.update('none'); // no animation for live updates
+}
+
+// ── Apply user data ──────────────────────────────────────
 function applyUser(d) {
   if (d.balance !== undefined) {
     document.querySelectorAll('[data-live-balance]').forEach(el => { el.textContent = money(d.balance); });
@@ -201,29 +186,35 @@ function applyUser(d) {
       setLive(p+'ctr',         pct(c.views, c.impressions));
       setLiveBadge(p+'status', c.status);
       if (c.budget > 0) {
-        const pctVal = c.budget > 0 ? Math.min(100, (c.spent/c.budget)*100).toFixed(1) : '0.0';
+        const pctVal = Math.min(100, (c.spent/c.budget)*100).toFixed(1);
         document.querySelectorAll('[data-live="'+p+'budget-pct"]').forEach(el => { el.style.width = pctVal+'%'; });
       }
     });
   }
 
   if (d.creatives) {
-    Object.entries(d.creatives).forEach(([crid, cr]) => { setLiveBadge('cr:'+crid+':status', cr.status); });
+    Object.entries(d.creatives).forEach(([crid, cr]) => setLiveBadge('cr:'+crid+':status', cr.status));
   }
-
   if (d.topups) {
-    Object.entries(d.topups).forEach(([tid, t]) => { setLiveBadge('topup:'+tid+':status', t.status); });
+    Object.entries(d.topups).forEach(([tid, t]) => setLiveBadge('topup:'+tid+':status', t.status));
   }
 
-  // Update notification bell + play sound if new ones arrived
-  if (d.unread_notifications !== undefined) {
-    updateNotifBell(d.unread_notifications);
+  if (d.unread_notifications !== undefined) updateNotifBell(d.unread_notifications);
+
+  // ── LIVE CHART FEED ──────────────────────────────────
+  if (window._liveChart) {
+    if (window._liveChartMode === 'campaign' && window._liveCampaignId && d.camp_charts) {
+      const cc = d.camp_charts[window._liveCampaignId];
+      if (cc) feedChart(cc);
+    } else if (d.chart) {
+      feedChart(d.chart);
+    }
   }
 
   window.dispatchEvent(new CustomEvent('liveStatsUpdate', { detail: d }));
 }
 
-// ── Apply admin data ──────────────────────────────────────
+// ── Apply admin data ─────────────────────────────────────
 function applyAdmin(d) {
   if (d.totals) {
     const t = d.totals;
@@ -235,10 +226,8 @@ function applyAdmin(d) {
     setLive('total-users',       n(t.users));
     setLive('total-campaigns',   n(t.campaigns));
   }
-
   if (d.pending) {
-    const p     = d.pending;
-    const total = p.campaigns + p.creatives + p.topups;
+    const p = d.pending, total = p.campaigns + p.creatives + p.topups;
     setLive('pending-total',     total);
     setLive('pending-campaigns', p.campaigns);
     setLive('pending-creatives', p.creatives);
@@ -249,11 +238,8 @@ function applyAdmin(d) {
       el.textContent   = p[k];
       el.style.display = p[k] > 0 ? '' : 'none';
     });
-
-    // Play sound when new submissions arrive
     checkAdminNewSubmissions(p);
   }
-
   if (d.campaigns) {
     Object.entries(d.campaigns).forEach(([cid, c]) => {
       const p = 'camp:' + cid + ':';
@@ -264,79 +250,61 @@ function applyAdmin(d) {
       setLiveBadge(p+'status', c.status);
     });
   }
-
   if (d.users) {
     Object.entries(d.users).forEach(([uid, u]) => {
       setLiveMoney('user:'+uid+':balance', u.balance);
       setLiveBadge('user:'+uid+':status',  u.disabled ? 'disabled' : 'active');
     });
   }
-
-  if (d.creatives) {
-    Object.entries(d.creatives).forEach(([crid, cr]) => { setLiveBadge('cr:'+crid+':status', cr.status); });
-  }
-
-  if (d.topups) {
-    Object.entries(d.topups).forEach(([tid, t]) => { setLiveBadge('topup:'+tid+':status', t.status); });
-  }
-
-  // Admin notification bell
-  if (d.unread_admin_notifs !== undefined) {
-    updateAdminNotifBell(d.unread_admin_notifs);
-  }
+  if (d.creatives) Object.entries(d.creatives).forEach(([crid, cr]) => setLiveBadge('cr:'+crid+':status', cr.status));
+  if (d.topups)    Object.entries(d.topups).forEach(([tid, t])  => setLiveBadge('topup:'+tid+':status', t.status));
+  if (d.unread_admin_notifs !== undefined) updateAdminNotifBell(d.unread_admin_notifs);
 }
 
 let _lastAdminNotifCount = -1;
-
 function updateAdminNotifBell(count) {
-  // Update bell badge in admin topbar
-  const bell  = document.getElementById('admin-notif-bell');
   const badge = document.getElementById('admin-notif-badge');
   if (badge) {
     badge.textContent   = count > 9 ? '9+' : count;
     badge.style.display = count > 0 ? 'flex' : 'none';
   }
-  // Update nav badge
   const navBadge = document.getElementById('badge-admin-notifs');
   if (navBadge) {
     navBadge.textContent   = count > 9 ? '9+' : count;
     navBadge.style.display = count > 0 ? '' : 'none';
   }
-  // Play sound when count increases
-  if (_lastAdminNotifCount >= 0 && count > _lastAdminNotifCount) {
-    playAdminNotifSound();
-  }
+  if (_lastAdminNotifCount >= 0 && count > _lastAdminNotifCount) playAdminNotifSound();
   _lastAdminNotifCount = count;
 }
-
-// Distinct sound for user-activity admin notifications (softer than pending-item sound)
 function playAdminNotifSound() {
   try {
-    const ctx   = getAudioCtx();
-    const notes = [660, 880, 1100];
-    notes.forEach((freq, i) => {
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.1);
-      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.1);
-      gain.gain.linearRampToValueAtTime(0.14, ctx.currentTime + i * 0.1 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.3);
-      osc.start(ctx.currentTime + i * 0.1);
-      osc.stop(ctx.currentTime  + i * 0.1 + 0.3);
+    const ctx = getAudioCtx();
+    [660, 880, 1100].forEach((freq, i) => {
+      const osc=ctx.createOscillator(), gain=ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type='sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + i*0.1);
+      gain.gain.setValueAtTime(0, ctx.currentTime + i*0.1);
+      gain.gain.linearRampToValueAtTime(0.14, ctx.currentTime + i*0.1 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.1 + 0.3);
+      osc.start(ctx.currentTime + i*0.1); osc.stop(ctx.currentTime + i*0.1 + 0.3);
     });
-  } catch(e) {}
+  } catch(e){}
 }
 
-// ── Poll loop ─────────────────────────────────────────────
+// ── Poll loop ────────────────────────────────────────────
 let pollTimer = null;
 
 async function pollOnce() {
   try {
-    const url = IS_ADMIN ? '/api/admin_stats.php' : '/api/live_stats.php';
-    const r   = await fetch(url + '?t=' + Date.now());
+    let url = IS_ADMIN ? '/api/admin_stats.php' : '/api/live_stats.php';
+    // Pass campaign_id through if we're on a campaign view page
+    if (!IS_ADMIN && window._liveChartMode === 'campaign' && window._liveCampaignId) {
+      url += '?campaign_id=' + encodeURIComponent(window._liveCampaignId) + '&t=' + Date.now();
+    } else {
+      url += '?t=' + Date.now();
+    }
+    const r = await fetch(url);
     if (!r.ok) return;
     const d = await r.json();
     if (!d.success) return;
@@ -348,7 +316,7 @@ if (document.getElementById('sidebar')) {
   pollOnce();
   pollTimer = setInterval(pollOnce, POLL_MS);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { clearInterval(pollTimer); }
+    if (document.hidden) clearInterval(pollTimer);
     else { pollOnce(); pollTimer = setInterval(pollOnce, POLL_MS); }
   });
 }

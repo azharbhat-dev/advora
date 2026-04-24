@@ -3,73 +3,87 @@ require_once __DIR__ . '/../includes/admin_header.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    $users  = readJson(USERS_FILE);
 
     if ($action === 'create') {
         $username = trim($_POST['username'] ?? '');
         $password = $_POST['password'] ?? '';
         $balance  = (float)($_POST['balance'] ?? 0);
-        $acctType = in_array($_POST['account_type']??'',['rookie','professional','expert']) ? $_POST['account_type'] : 'rookie';
+        $acctType = in_array($_POST['account_type']??'', ['rookie','professional','expert']) ? $_POST['account_type'] : 'rookie';
+
         if (!$username || strlen($password) < 6) {
             flash('Username required, password min 6 chars', 'error');
         } else {
-            $exists = false;
-            foreach ($users as $u) if ($u['username'] === $username) { $exists = true; break; }
-            if ($exists) {
+            // Check uniqueness directly
+            $stmt = db()->prepare('SELECT id FROM users WHERE username = ?');
+            $stmt->execute([$username]);
+            if ($stmt->fetch()) {
                 flash('Username already exists', 'error');
             } else {
-                $users[] = [
-                    'id'               => 'USR-' . strtoupper(substr(md5(uniqid(mt_rand(),true)),0,8)),
-                    'username'         => $username,
-                    'password'         => password_hash($password, PASSWORD_DEFAULT),
-                    'email'            => trim($_POST['email']            ?? ''),
-                    'full_name'        => trim($_POST['full_name']        ?? ''),
-                    'phone'            => trim($_POST['phone']            ?? ''),
-                    'address'          => trim($_POST['address']          ?? ''),
-                    'telegram_id'      => ltrim(trim($_POST['telegram_id'] ?? ''), '@'),
-                    'business_name'    => trim($_POST['business_name']    ?? ''),
-                    'business_address' => trim($_POST['business_address'] ?? ''),
-                    'doc_verified'     => false,
-                    'balance'          => $balance,
-                    'account_type'     => $acctType,
-                    'disabled'         => false,
-                    'created_at'       => time(),
-                ];
-                writeJson(USERS_FILE, $users);
+                $stmt = db()->prepare(
+                    'INSERT INTO users
+                     (id,username,password,email,full_name,phone,address,telegram_id,business_name,business_address,doc_verified,balance,account_type,disabled,created_at)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?,0,?)'
+                );
+                $stmt->execute([
+                    'USR-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8)),
+                    $username,
+                    password_hash($password, PASSWORD_DEFAULT),
+                    trim($_POST['email']            ?? ''),
+                    trim($_POST['full_name']        ?? ''),
+                    trim($_POST['phone']            ?? ''),
+                    trim($_POST['address']          ?? ''),
+                    ltrim(trim($_POST['telegram_id'] ?? ''), '@'),
+                    trim($_POST['business_name']    ?? ''),
+                    trim($_POST['business_address'] ?? ''),
+                    $balance,
+                    $acctType,
+                    time(),
+                ]);
                 flash('User created', 'success');
             }
         }
 
     } elseif ($action === 'update_details') {
         $uid = $_POST['user_id'] ?? '';
-        foreach ($users as &$u) {
-            if ($u['id'] === $uid) {
-                $u['full_name']        = trim($_POST['full_name']        ?? '');
-                $u['email']            = trim($_POST['email']            ?? '');
-                $u['phone']            = trim($_POST['phone']            ?? '');
-                $u['address']          = trim($_POST['address']          ?? '');
-                $u['telegram_id']      = ltrim(trim($_POST['telegram_id'] ?? ''), '@');
-                $u['business_name']    = trim($_POST['business_name']    ?? '');
-                $u['business_address'] = trim($_POST['business_address'] ?? '');
-                break;
-            }
+        if (!$uid) {
+            flash('Missing user id', 'error');
+        } else {
+            $stmt = db()->prepare(
+                'UPDATE users SET
+                   full_name=?, email=?, phone=?, address=?, telegram_id=?,
+                   business_name=?, business_address=?
+                 WHERE id = ?'
+            );
+            $stmt->execute([
+                trim($_POST['full_name']        ?? ''),
+                trim($_POST['email']            ?? ''),
+                trim($_POST['phone']            ?? ''),
+                trim($_POST['address']          ?? ''),
+                ltrim(trim($_POST['telegram_id'] ?? ''), '@'),
+                trim($_POST['business_name']    ?? ''),
+                trim($_POST['business_address'] ?? ''),
+                $uid,
+            ]);
+            flash('User details updated', 'success');
         }
-        writeJson(USERS_FILE, $users);
-        flash('User details updated', 'success');
 
     } elseif ($action === 'update_balance') {
         $uid = $_POST['user_id'] ?? '';
         $bal = (float)($_POST['balance'] ?? 0);
-        foreach ($users as &$u) { if ($u['id'] === $uid) { $u['balance'] = $bal; break; } }
-        writeJson(USERS_FILE, $users);
-        flash('Balance updated', 'success');
+        if ($uid) {
+            $stmt = db()->prepare('UPDATE users SET balance = ? WHERE id = ?');
+            $stmt->execute([$bal, $uid]);
+            flash('Balance updated', 'success');
+        }
 
     } elseif ($action === 'set_account_type') {
         $uid  = $_POST['user_id'] ?? '';
-        $type = in_array($_POST['account_type']??'',['rookie','professional','expert']) ? $_POST['account_type'] : 'rookie';
-        foreach ($users as &$u) { if ($u['id'] === $uid) { $u['account_type'] = $type; break; } }
-        writeJson(USERS_FILE, $users);
-        flash('Account type updated', 'success');
+        $type = in_array($_POST['account_type']??'', ['rookie','professional','expert']) ? $_POST['account_type'] : 'rookie';
+        if ($uid) {
+            $stmt = db()->prepare('UPDATE users SET account_type = ? WHERE id = ?');
+            $stmt->execute([$type, $uid]);
+            flash('Account type updated', 'success');
+        }
 
     } elseif ($action === 'reset_password') {
         $uid  = $_POST['user_id'] ?? '';
@@ -77,29 +91,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (strlen($pass) < 6) {
             flash('Password must be at least 6 chars', 'error');
         } else {
-            foreach ($users as &$u) { if ($u['id'] === $uid) { $u['password'] = password_hash($pass, PASSWORD_DEFAULT); break; } }
-            writeJson(USERS_FILE, $users);
+            $stmt = db()->prepare('UPDATE users SET password = ? WHERE id = ?');
+            $stmt->execute([password_hash($pass, PASSWORD_DEFAULT), $uid]);
             flash('Password reset', 'success');
         }
 
     } elseif ($action === 'set_doc_verified') {
         $uid      = $_POST['user_id'] ?? '';
-        $verified = ($_POST['doc_verified'] ?? '0') === '1';
-        foreach ($users as &$u) { if ($u['id'] === $uid) { $u['doc_verified'] = $verified; break; } }
-        writeJson(USERS_FILE, $users);
-        flash('Document status updated', 'success');
+        $verified = (($_POST['doc_verified'] ?? '0') === '1') ? 1 : 0;
+        if ($uid) {
+            $stmt = db()->prepare('UPDATE users SET doc_verified = ? WHERE id = ?');
+            $stmt->execute([$verified, $uid]);
+            flash($verified ? 'Document verified' : 'Document verification revoked', 'success');
+        }
 
     } elseif ($action === 'toggle_disabled') {
         $uid = $_POST['user_id'] ?? '';
-        foreach ($users as &$u) { if ($u['id'] === $uid) { $u['disabled'] = !($u['disabled'] ?? false); break; } }
-        writeJson(USERS_FILE, $users);
-        flash('User status updated', 'success');
+        if ($uid) {
+            $stmt = db()->prepare('UPDATE users SET disabled = 1 - disabled WHERE id = ?');
+            $stmt->execute([$uid]);
+            flash('User status updated', 'success');
+        }
 
     } elseif ($action === 'delete') {
-        $uid   = $_POST['user_id'] ?? '';
-        $users = array_values(array_filter($users, fn($u) => $u['id'] !== $uid));
-        writeJson(USERS_FILE, $users);
-        flash('User deleted', 'success');
+        $uid = $_POST['user_id'] ?? '';
+        if ($uid) {
+            $stmt = db()->prepare('DELETE FROM users WHERE id = ?');
+            $stmt->execute([$uid]);
+            flash('User deleted', 'success');
+        }
     }
 
     safeRedirect('/admin/users.php');
@@ -195,19 +215,28 @@ $acctColors = [
                     <td style="font-size:12px;color:var(--text-2)"><?= date('M d, Y', $u['created_at']) ?></td>
                     <td>
                         <div style="display:flex;gap:5px;flex-wrap:wrap">
-                            <button class="btn btn-primary btn-sm" onclick="openEditDetails(<?= htmlspecialchars(json_encode($u), ENT_QUOTES) ?>)">
-                                Details
-                            </button>
-                            <button class="btn btn-secondary btn-sm" onclick="openEditBalance(<?= htmlspecialchars(json_encode($u), ENT_QUOTES) ?>)">Balance</button>
-                            <button class="btn btn-secondary btn-sm" onclick="openSetType(<?= htmlspecialchars(json_encode($u), ENT_QUOTES) ?>)">Type</button>
-                            <button class="btn btn-secondary btn-sm" onclick="openResetPass(<?= htmlspecialchars(json_encode($u), ENT_QUOTES) ?>)">Password</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick='openEditDetails(<?= json_encode($u, JSON_HEX_APOS|JSON_HEX_QUOT) ?>)'>Details</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick='openEditBalance(<?= json_encode($u, JSON_HEX_APOS|JSON_HEX_QUOT) ?>)'>Balance</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick='openSetType(<?= json_encode($u, JSON_HEX_APOS|JSON_HEX_QUOT) ?>)'>Type</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick='openResetPass(<?= json_encode($u, JSON_HEX_APOS|JSON_HEX_QUOT) ?>)'>Password</button>
+
+                            <?php /* Doc verify – standalone form */ ?>
                             <form method="POST" style="display:inline">
-                                <input type="hidden" name="action"     value="toggle_disabled">
-                                <input type="hidden" name="user_id"   value="<?= $u['id'] ?>">
+                                <input type="hidden" name="action"       value="set_doc_verified">
+                                <input type="hidden" name="user_id"      value="<?= $u['id'] ?>">
+                                <input type="hidden" name="doc_verified" value="<?= $doc ? '0' : '1' ?>">
+                                <button type="submit" class="btn <?= $doc ? 'btn-danger' : 'btn-success' ?> btn-sm">
+                                    <?= $doc ? 'Revoke Doc' : 'Verify Doc' ?>
+                                </button>
+                            </form>
+
+                            <form method="POST" style="display:inline">
+                                <input type="hidden" name="action"  value="toggle_disabled">
+                                <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
                                 <button type="submit" class="btn btn-secondary btn-sm"><?= $dis?'Enable':'Disable' ?></button>
                             </form>
                             <form method="POST" style="display:inline" onsubmit="return confirm('Delete user permanently?')">
-                                <input type="hidden" name="action"   value="delete">
+                                <input type="hidden" name="action"  value="delete">
                                 <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
                                 <button type="submit" class="btn btn-danger btn-sm">Del</button>
                             </form>
@@ -268,6 +297,20 @@ $acctColors = [
                     </div>
                 </div>
             </div>
+            <div class="form-group">
+                <label class="form-label">Address</label>
+                <input type="text" name="address" class="form-control" placeholder="Street, City, Country">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Business Name</label>
+                    <input type="text" name="business_name" class="form-control" placeholder="Acme Corp">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Business Address</label>
+                    <input type="text" name="business_address" class="form-control" placeholder="456 Corp Ave">
+                </div>
+            </div>
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Account Type</label>
@@ -290,7 +333,7 @@ $acctColors = [
     </div>
 </div>
 
-<!-- Edit Details -->
+<!-- Edit Details (SINGLE form — no nesting) -->
 <div class="modal" id="detailsModal">
     <div class="modal-box" style="max-width:580px">
         <div class="modal-header">
@@ -299,14 +342,19 @@ $acctColors = [
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </div>
         </div>
-        <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:7px;padding:10px 14px;margin-bottom:18px;font-size:13px">
-            <span style="color:var(--text-2)">Editing:</span>
-            <strong id="det_lbl_username" style="margin-left:6px"></strong>
-            <code id="det_lbl_uid" style="font-size:10px;color:var(--yellow);margin-left:8px"></code>
+        <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:7px;padding:10px 14px;margin-bottom:18px;font-size:13px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="flex:1">
+                <span style="color:var(--text-2)">Editing:</span>
+                <strong id="det_lbl_username" style="margin-left:6px"></strong>
+                <code id="det_lbl_uid" style="font-size:10px;color:var(--yellow);margin-left:8px"></code>
+            </div>
+            <span id="det_doc_badge" class="badge badge-pending">Unverified</span>
         </div>
+
         <form method="POST">
             <input type="hidden" name="action"  value="update_details">
             <input type="hidden" name="user_id" id="det_user_id">
+
             <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:12px">Personal</div>
             <div class="form-row">
                 <div class="form-group">
@@ -335,7 +383,8 @@ $acctColors = [
                 <label class="form-label">Address</label>
                 <textarea name="address" id="det_address" class="form-control" rows="2" placeholder="Street, City, Country"></textarea>
             </div>
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:12px;margin-top:4px;padding-top:14px;border-top:1px solid var(--border)">Business</div>
+
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin:4px 0 12px;padding-top:14px;border-top:1px solid var(--border)">Business</div>
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Business Name</label>
@@ -346,23 +395,26 @@ $acctColors = [
                     <input type="text" name="business_address" id="det_business_address" class="form-control" placeholder="456 Corp Ave">
                 </div>
             </div>
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:12px;padding-top:14px;border-top:1px solid var(--border)">Document Status</div>
-            <div style="display:flex;gap:10px;align-items:center;margin-bottom:18px">
-                <form method="POST" style="display:inline" id="docVerifyForm">
-                    <input type="hidden" name="action"      value="set_doc_verified">
-                    <input type="hidden" name="user_id"     id="det_doc_uid">
-                    <input type="hidden" name="doc_verified" id="det_doc_value">
-                </form>
-                <span id="det_doc_badge" class="badge badge-pending">Unverified</span>
-                <button type="button" id="det_doc_btn" class="btn btn-secondary btn-sm" onclick="toggleDoc()">Verify</button>
-            </div>
-            <div style="display:flex;gap:10px;justify-content:flex-end">
+
+            <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--border)">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('detailsModal')">Cancel</button>
                 <button type="submit" class="btn btn-primary">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>
-                    Save Details
+                    Save All Details
                 </button>
             </div>
+        </form>
+
+        <!-- Separate doc verify form OUTSIDE details form -->
+        <form method="POST" id="docVerifyForm" style="margin-top:12px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px">
+            <div>
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:4px">Document Status</div>
+                <div style="font-size:12px;color:var(--text-2)">Click below to toggle verification</div>
+            </div>
+            <input type="hidden" name="action"       value="set_doc_verified">
+            <input type="hidden" name="user_id"      id="det_doc_uid">
+            <input type="hidden" name="doc_verified" id="det_doc_value">
+            <button type="submit" id="det_doc_btn" class="btn btn-success btn-sm">Verify</button>
         </form>
     </div>
 </div>
@@ -467,51 +519,36 @@ $acctColors = [
     </div>
 </div>
 
-<!-- ALL JS in one block at the bottom -->
 <script>
-var _detUser = null; // currently editing user in details modal
-
 function openEditDetails(user) {
-    _detUser = user;
-    // header info
     document.getElementById('det_lbl_username').textContent = user.username;
     document.getElementById('det_lbl_uid').textContent      = user.id;
     document.getElementById('det_user_id').value            = user.id;
-    // personal fields
-    document.getElementById('det_full_name').value        = user.full_name        || '';
-    document.getElementById('det_email').value            = user.email            || '';
-    document.getElementById('det_phone').value            = user.phone            || '';
-    document.getElementById('det_telegram_id').value      = (user.telegram_id     || '').replace(/^@/, '');
-    document.getElementById('det_address').value          = user.address          || '';
-    // business fields
-    document.getElementById('det_business_name').value    = user.business_name    || '';
-    document.getElementById('det_business_address').value = user.business_address || '';
-    // doc status
-    document.getElementById('det_doc_uid').value = user.id;
-    updateDocBadge(user.doc_verified);
-    openModal('detailsModal');
-}
+    document.getElementById('det_full_name').value          = user.full_name        || '';
+    document.getElementById('det_email').value              = user.email            || '';
+    document.getElementById('det_phone').value              = user.phone            || '';
+    document.getElementById('det_telegram_id').value        = (user.telegram_id     || '').replace(/^@/, '');
+    document.getElementById('det_address').value            = user.address          || '';
+    document.getElementById('det_business_name').value      = user.business_name    || '';
+    document.getElementById('det_business_address').value   = user.business_address || '';
+    document.getElementById('det_doc_uid').value            = user.id;
 
-function updateDocBadge(verified) {
     var badge = document.getElementById('det_doc_badge');
     var btn   = document.getElementById('det_doc_btn');
-    if (verified) {
+    if (user.doc_verified) {
         badge.className   = 'badge badge-success';
         badge.textContent = 'Verified';
-        btn.textContent   = 'Revoke';
+        btn.textContent   = 'Revoke Verification';
         btn.className     = 'btn btn-danger btn-sm';
         document.getElementById('det_doc_value').value = '0';
     } else {
         badge.className   = 'badge badge-pending';
         badge.textContent = 'Unverified';
-        btn.textContent   = 'Verify';
+        btn.textContent   = 'Verify Document';
         btn.className     = 'btn btn-success btn-sm';
         document.getElementById('det_doc_value').value = '1';
     }
-}
-
-function toggleDoc() {
-    document.getElementById('docVerifyForm').submit();
+    openModal('detailsModal');
 }
 
 function openEditBalance(user) {
@@ -524,12 +561,10 @@ function openEditBalance(user) {
 function openSetType(user) {
     document.getElementById('type_user_id').value  = user.id;
     document.getElementById('type_username').value = user.username;
-    // reset & select current
     document.querySelectorAll('#typeModal .radio-option').forEach(function(o) { o.classList.remove('selected'); });
     var cur = user.account_type || 'rookie';
     var el  = document.getElementById('type_' + cur);
     if (el) { el.classList.add('selected'); el.querySelector('input').checked = true; }
-    // click handlers
     document.querySelectorAll('#typeModal .radio-option').forEach(function(opt) {
         opt.onclick = function() {
             document.querySelectorAll('#typeModal .radio-option').forEach(function(o) { o.classList.remove('selected'); });

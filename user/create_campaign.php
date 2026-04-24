@@ -3,14 +3,37 @@ require_once __DIR__ . '/../includes/user_header.php';
 require_once __DIR__ . '/../includes/states_data.php';
 
 $settings = getSettings();
-$creatives = readJson(CREATIVES_FILE);
-$approvedCreatives = array_values(array_filter($creatives, fn($cr) => $cr['user_id'] === $user['id'] && $cr['status'] === 'approved'));
 
-$editId = $_GET['edit'] ?? null;
+// Load approved creatives for this user directly from DB
+$stmt = db()->prepare("SELECT * FROM creatives WHERE user_id = ? AND status = 'approved' ORDER BY uploaded_at DESC");
+$stmt->execute([$user['id']]);
+$approvedCreatives = $stmt->fetchAll();
+
+// Editing?
+$editId  = $_GET['edit'] ?? null;
 $editing = null;
 if ($editId) {
-    foreach (readJson(CAMPAIGNS_FILE) as $c) {
-        if ($c['campaign_id'] === $editId && $c['user_id'] === $user['id']) { $editing = $c; break; }
+    $stmt = db()->prepare('SELECT * FROM campaigns WHERE campaign_id = ? AND user_id = ?');
+    $stmt->execute([$editId, $user['id']]);
+    if ($row = $stmt->fetch()) {
+        $editing = [
+            'campaign_id'  => $row['campaign_id'],
+            'name'         => $row['name'],
+            'cpv'          => (float)$row['cpv'],
+            'cpc'          => (float)$row['cpc'],
+            'creative_id'  => $row['creative_id'],
+            'countries'    => jdec($row['countries']),
+            'states'       => jdec($row['states']),
+            'schedule'     => jdec($row['schedule']),
+            'ip_mode'      => $row['ip_mode'],
+            'domain_mode'  => $row['domain_mode'],
+            'ip_list'      => jdec($row['ip_list']),
+            'domain_list'  => jdec($row['domain_list']),
+            'daily_budget' => (float)$row['daily_budget'],
+            'budget'       => (float)$row['budget'],
+            'delivery'     => $row['delivery'],
+            'sources'      => jdec($row['sources']),
+        ];
     }
 }
 
@@ -19,9 +42,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $cpv         = (float)($_POST['cpv'] ?? 0);
     $creativeId  = $_POST['creative_id'] ?? '';
     $countries   = $_POST['countries'] ?? [];
-    $states      = $_POST['states'] ?? [];   // array of 'CC:StateName'
-    $schedule    = $_POST['schedule'] ?? [];
-    $ipMode      = $_POST['ip_mode'] ?? 'off';
+    $states      = $_POST['states']    ?? [];
+    $schedule    = $_POST['schedule']  ?? [];
+    $ipMode      = $_POST['ip_mode']   ?? 'off';
     $domainMode  = $_POST['domain_mode'] ?? 'off';
     $ipList      = array_values(array_filter(array_map('trim', explode(',', $_POST['ip_list'] ?? ''))));
     $domainList  = array_values(array_filter(array_map('trim', explode(',', $_POST['domain_list'] ?? ''))));
@@ -40,31 +63,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($errors)) {
         flash(implode('. ', $errors), 'error');
     } else {
-        $campaigns = readJson(CAMPAIGNS_FILE);
         if ($editing) {
-            foreach ($campaigns as &$c) {
-                if ($c['campaign_id'] === $editing['campaign_id']) {
-                    $c['name']         = $name;
-                    $c['cpv']          = $cpv;
-                    $c['cpc']          = $cpv;
-                    $c['creative_id']  = $creativeId;
-                    $c['countries']    = $countries;
-                    $c['states']       = $states;
-                    $c['schedule']     = $schedule;
-                    $c['ip_mode']      = $ipMode;
-                    $c['domain_mode']  = $domainMode;
-                    $c['ip_list']      = $ipList;
-                    $c['domain_list']  = $domainList;
-                    $c['daily_budget'] = $dailyBudget;
-                    $c['budget']       = $dailyBudget;
-                    $c['delivery']     = $delivery;
-                    $c['sources']      = $sources;
-                    $c['status']       = 'review';
-                    $c['updated_at']   = time();
-                    break;
-                }
-            }
-            writeJson(CAMPAIGNS_FILE, $campaigns);
+            $stmt = db()->prepare(
+                'UPDATE campaigns SET name=?, cpv=?, cpc=?, creative_id=?,
+                   countries=?, states=?, schedule=?, ip_mode=?, domain_mode=?,
+                   ip_list=?, domain_list=?, daily_budget=?, budget=?, delivery=?,
+                   sources=?, status="review", updated_at=?
+                 WHERE campaign_id = ? AND user_id = ?'
+            );
+            $stmt->execute([
+                $name, $cpv, $cpv, $creativeId,
+                jenc($countries), jenc($states), jenc($schedule), $ipMode, $domainMode,
+                jenc($ipList), jenc($domainList), $dailyBudget, $dailyBudget, $delivery,
+                jenc($sources), time(), $editing['campaign_id'], $user['id']
+            ]);
             addAdminNotification($user['id'], $user['username'], 'campaign_updated',
                 'Campaign Updated',
                 $user['username'] . ' updated campaign "' . $name . '" (' . $editing['campaign_id'] . ') and sent for re-review.'
@@ -73,34 +85,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             safeRedirect('/user/campaign_view.php?id=' . urlencode($editing['campaign_id']));
         } else {
             $campaignId = 'CMP-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8));
-            $campaigns[] = [
-                'campaign_id'  => $campaignId,
-                'user_id'      => $user['id'],
-                'name'         => $name,
-                'cpv'          => $cpv,
-                'cpc'          => $cpv,
-                'creative_id'  => $creativeId,
-                'countries'    => $countries,
-                'states'       => $states,
-                'schedule'     => $schedule,
-                'ip_mode'      => $ipMode,
-                'domain_mode'  => $domainMode,
-                'ip_list'      => $ipList,
-                'domain_list'  => $domainList,
-                'daily_budget' => $dailyBudget,
-                'budget'       => $dailyBudget,
-                'delivery'     => $delivery,
-                'sources'      => $sources,
-                'spent'        => 0,
-                'impressions'  => 0,
-                'clicks'       => 0,
-                'good_hits'    => 0,
-                'views_count'  => 0,
-                'status'       => 'review',
-                'created_at'   => time(),
-                'updated_at'   => time()
-            ];
-            writeJson(CAMPAIGNS_FILE, $campaigns);
+            $stmt = db()->prepare(
+                'INSERT INTO campaigns
+                 (campaign_id,user_id,name,cpv,cpc,creative_id,countries,states,schedule,ip_mode,domain_mode,
+                  ip_list,domain_list,daily_budget,budget,delivery,sources,spent,impressions,clicks,good_hits,views_count,
+                  status,created_at,updated_at)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,0,0,0,0,"review",?,?)'
+            );
+            $stmt->execute([
+                $campaignId, $user['id'], $name, $cpv, $cpv, $creativeId,
+                jenc($countries), jenc($states), jenc($schedule), $ipMode, $domainMode,
+                jenc($ipList), jenc($domainList), $dailyBudget, $dailyBudget, $delivery,
+                jenc($sources), time(), time()
+            ]);
             addAdminNotification($user['id'], $user['username'], 'campaign_created',
                 'New Campaign Created',
                 $user['username'] . ' created campaign "' . $name . '" (' . $campaignId . ') — CPV: ' . fmtMoney($cpv) . ', Budget: ' . fmtMoney($dailyBudget) . '/day'
@@ -110,22 +107,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Default schedule: Mon-Fri (indices 0-4), hours 9-19 CST
+// Default schedule: Mon-Fri 9-19 CST
 $defaultScheduleMap = [];
-for ($d = 0; $d <= 4; $d++) {
-    for ($h = 9; $h <= 19; $h++) {
-        $defaultScheduleMap[$d . '_' . $h] = true;
-    }
-}
-$scheduleMap = [];
-if ($editing && !empty($editing['schedule'])) {
-    foreach ($editing['schedule'] as $s) $scheduleMap[$s] = true;
-} else {
-    $scheduleMap = $defaultScheduleMap;
-}
+for ($d = 0; $d <= 4; $d++) for ($h = 9; $h <= 19; $h++) $defaultScheduleMap[$d . '_' . $h] = true;
+$scheduleMap = $editing && !empty($editing['schedule'])
+    ? array_fill_keys($editing['schedule'], true)
+    : $defaultScheduleMap;
 
 $editingSources = $editing['sources'] ?? [];
-$steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', 'Budget', 'Review'];
+$steps = ['Basics','Creative','Countries','Schedule','Sources','Filters','Budget','Review'];
+
+// ── Divisor used for daily reach estimate (0.20 per view) ─
+// $1 of budget ≈ 1 / 0.20 = 5 views
+define('EST_CPV_DIVISOR', 0.20);
 ?>
 
 <div class="page-header">
@@ -151,7 +145,7 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
     <?php endforeach; ?>
     <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text-3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;font-weight:600">Balance</div>
-      <div style="font-size:18px;font-weight:700;color:var(--yellow)"><?= fmtMoney($user['balance']) ?></div>
+      <div style="font-size:18px;font-weight:700;color:var(--yellow)" data-live-balance><?= fmtMoney($user['balance']) ?></div>
     </div>
   </div>
 
@@ -168,17 +162,13 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
       <div class="tab-content active cmp-panel-body" data-content="0">
         <div class="form-group">
           <label class="form-label">Campaign Name *</label>
-          <input type="text" name="name" id="f_name" class="form-control"
-            value="<?= htmlspecialchars($editing['name']??'') ?>" placeholder="e.g. US Premium Push Q1 2025">
+          <input type="text" name="name" id="f_name" class="form-control" value="<?= htmlspecialchars($editing['name']??'') ?>" placeholder="e.g. US Premium Push Q1 2025">
         </div>
         <div class="form-group">
           <label class="form-label">CPV Bid (USD) *</label>
           <div style="position:relative">
             <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text-2);font-weight:600">$</span>
-            <input type="number" name="cpv" id="f_cpv" class="form-control" style="padding-left:26px"
-              min="0.0001" step="0.0001"
-              value="<?= htmlspecialchars((string)($editing['cpv'] ?? $editing['cpc'] ?? '')) ?>"
-              placeholder="0.12">
+            <input type="number" name="cpv" id="f_cpv" class="form-control" style="padding-left:26px" min="0.0001" step="0.0001" value="<?= htmlspecialchars((string)($editing['cpv'] ?? $editing['cpc'] ?? '')) ?>" placeholder="0.12">
           </div>
           <div class="form-hint">Cost per view — balance deducted per view received. Minimum $0.0001.</div>
         </div>
@@ -200,8 +190,7 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
               $sel = ($editing['creative_id']??'')===$cr['id'] ? 'border-color:rgba(255,200,0,.35);background:var(--yellow-dim)' : '';
             ?>
             <label style="background:var(--bg-3);border:1px solid var(--border-2);border-radius:var(--r-sm);padding:14px;cursor:pointer;transition:all .15s;display:block;<?= $sel ?>" class="creative-card">
-              <input type="radio" name="creative_id" value="<?= htmlspecialchars($cr['id']) ?>"
-                <?= ($editing['creative_id']??'')===$cr['id']?'checked':'' ?> style="display:none">
+              <input type="radio" name="creative_id" value="<?= htmlspecialchars($cr['id']) ?>" <?= ($editing['creative_id']??'')===$cr['id']?'checked':'' ?> style="display:none">
               <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
                 <div style="width:36px;height:36px;background:var(--bg-4);border-radius:7px;display:flex;align-items:center;justify-content:center">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -224,26 +213,19 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
 
       <!-- STEP 2: Countries + States -->
       <div class="tab-content cmp-panel-body" data-content="2">
-
-        <!-- PHP: emit states data as JSON for JS -->
         <?php
-        $statesJson = json_encode(defined('COUNTRY_STATES') ? COUNTRY_STATES : []);
-        $editingStates = $editing['states'] ?? [];
-        $editingStatesJson = json_encode(array_values($editingStates));
+        $statesJson        = json_encode(defined('COUNTRY_STATES') ? COUNTRY_STATES : []);
+        $editingStatesJson = json_encode(array_values($editing['states'] ?? []));
         ?>
-
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start" class="geo-grid">
         <style>@media(max-width:820px){.geo-grid{grid-template-columns:1fr!important}}</style>
 <style>
-/* State checkbox */
 .state-cb{width:16px;height:16px;border-radius:3px;border:1.5px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:transparent;flex-shrink:0;transition:all .15s}
 .state-cb.checked{background:var(--yellow);border-color:var(--yellow);color:#000}
 #stateGrid > div:hover{background:rgba(255,200,0,.06)!important}
 #stateGrid::-webkit-scrollbar{width:5px}
 #stateGrid::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
 </style>
-
-        <!-- Left: country picker -->
         <div class="form-group" style="margin-bottom:0">
           <label class="form-label">Target Countries *</label>
           <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
@@ -256,9 +238,7 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
             $isSel = in_array($country['code'], $editing['countries']??[]);
             $flag  = strtolower($country['code']==='UK'?'gb':$country['code']);
           ?>
-            <div class="country-item <?= $isSel?'selected':'' ?>"
-                 data-code="<?= htmlspecialchars($country['code']) ?>"
-                 onclick="countryClick(this)">
+            <div class="country-item <?= $isSel?'selected':'' ?>" data-code="<?= htmlspecialchars($country['code']) ?>" onclick="countryClick(this)">
               <img class="country-flag" src="https://flagcdn.com/w40/<?= $flag ?>.png" alt="<?= $country['code'] ?>">
               <span class="country-code"><?= htmlspecialchars($country['code']) ?></span>
               <span class="country-name"><?= htmlspecialchars($country['name']) ?></span>
@@ -266,8 +246,6 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
           <?php endforeach; ?>
           </div>
         </div>
-
-        <!-- Right: state picker (shows when a country is active) -->
         <div>
           <div id="statePickerWrap" style="display:none">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -277,14 +255,8 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
                 <button type="button" class="btn btn-secondary btn-sm" onclick="clearAllStates()">None</button>
               </div>
             </div>
-            <div style="font-size:11.5px;color:var(--text-2);margin-bottom:8px">
-              Leave all unselected to target the entire country
-            </div>
-            <div id="stateGrid" style="
-              background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);
-              max-height:320px;overflow-y:auto;padding:8px;
-              display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:5px;
-            "></div>
+            <div style="font-size:11.5px;color:var(--text-2);margin-bottom:8px">Leave all unselected to target the entire country</div>
+            <div id="stateGrid" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);max-height:320px;overflow-y:auto;padding:8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:5px"></div>
             <div style="margin-top:8px;font-size:12px;color:var(--text-3)" id="stateSelCount"></div>
           </div>
           <div id="statePickerEmpty" style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r-sm);padding:28px;text-align:center;color:var(--text-3);font-size:13px">
@@ -292,17 +264,12 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
             Click a country to view<br>and select states
           </div>
         </div>
-
-        </div><!-- /geo-grid -->
-
-        <!-- Summary of selected geo targeting -->
+        </div>
         <div id="geoSummary" style="margin-top:14px;display:none">
           <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;font-weight:600">Selected Targeting</div>
           <div id="geoSummaryItems" style="display:flex;flex-wrap:wrap;gap:6px"></div>
         </div>
-
         <div id="countryInputs"></div>
-
       </div>
 
       <!-- STEP 3: Schedule -->
@@ -340,7 +307,7 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
       <div class="tab-content cmp-panel-body" data-content="4">
         <div class="form-group">
           <label class="form-label">Traffic Sources *</label>
-          <div style="font-size:12px;color:var(--text-2);margin-bottom:16px">Select one or more sources. You can combine any of them.</div>
+          <div style="font-size:12px;color:var(--text-2);margin-bottom:16px">Select one or more sources.</div>
           <div class="sources-table" id="sourcesGrid">
             <div class="sources-thead">
               <div class="sc-col"></div>
@@ -349,47 +316,25 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
               <div class="sc-col sc-center">CPV Starts</div>
               <div class="sc-col">Best For</div>
             </div>
-
-            <div class="sources-row <?= in_array('premium',$editingSources)?'selected':'' ?>" data-source="premium" onclick="toggleSource(this)">
-              <input type="checkbox" name="sources[]" value="premium" <?= in_array('premium',$editingSources)?'checked':'' ?> style="display:none">
+            <?php
+            $src_defs = [
+              ['premium',  'Premium',  '101', '$0.25', 'Best for start',      '#0095F6'],
+              ['standard', 'Standard', '115', '$0.19', 'Best to scale',       '#F59E0B'],
+              ['remnant',  'Remnant',  '230', '$0.18', 'Best to buy cheap',   '#6366F1'],
+              ['new',      'New',      '250', '$0.23', 'Best to expand',      '#10B981'],
+            ];
+            foreach ($src_defs as [$code,$label,$cnt,$cpv,$tag,$color]):
+              $on = in_array($code, $editingSources);
+            ?>
+            <div class="sources-row <?= $on?'selected':'' ?>" data-source="<?= $code ?>" onclick="toggleSource(this)">
+              <input type="checkbox" name="sources[]" value="<?= $code ?>" <?= $on?'checked':'' ?> style="display:none">
               <div class="sc-col sc-check"><div class="source-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div></div>
-              <div class="sc-col sc-name"><div class="source-icon source-premium"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#0095F6"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span>Premium</span></div>
-              <div class="sc-col sc-center">101</div>
-              <div class="sc-col sc-center sc-price">$0.25</div>
-              <div class="sc-col"><span class="source-tag">Best for start</span></div>
+              <div class="sc-col sc-name"><div class="source-icon" style="background:<?= $color ?>22"><div style="width:10px;height:10px;border-radius:50%;background:<?= $color ?>"></div></div><span><?= $label ?></span></div>
+              <div class="sc-col sc-center"><?= $cnt ?></div>
+              <div class="sc-col sc-center sc-price"><?= $cpv ?></div>
+              <div class="sc-col"><span class="source-tag"><?= $tag ?></span></div>
             </div>
-
-            <div class="sources-row <?= in_array('standard',$editingSources)?'selected':'' ?>" data-source="standard" onclick="toggleSource(this)">
-              <input type="checkbox" name="sources[]" value="standard" <?= in_array('standard',$editingSources)?'checked':'' ?> style="display:none">
-              <div class="sc-col sc-check"><div class="source-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div></div>
-              <div class="sc-col sc-name"><div class="source-icon source-standard"><svg width="16" height="16" viewBox="0 0 28 20" fill="none"><path d="M14 2l1.8 3.6 4 .58-2.9 2.83.68 3.99L14 11.1l-3.58 1.9.68-3.99L8.2 6.18l4-.58z" fill="#F59E0B"/><path d="M5 6l1.1 2.2 2.4.35-1.74 1.7.41 2.4L5 11.5l-2.17 1.15.41-2.4L1.5 8.55l2.4-.35z" fill="#F59E0B"/><path d="M23 6l1.1 2.2 2.4.35-1.74 1.7.41 2.4L23 11.5l-2.17 1.15.41-2.4-1.74-1.7 2.4-.35z" fill="#F59E0B"/></svg></div><span>Standard</span></div>
-              <div class="sc-col sc-center">115</div>
-              <div class="sc-col sc-center sc-price">$0.19</div>
-              <div class="sc-col"><span class="source-tag">Best to scale</span></div>
-            </div>
-
-            <div class="sources-row <?= in_array('remnant',$editingSources)?'selected':'' ?>" data-source="remnant" onclick="toggleSource(this)">
-              <input type="checkbox" name="sources[]" value="remnant" <?= in_array('remnant',$editingSources)?'checked':'' ?> style="display:none">
-              <div class="sc-col sc-check"><div class="source-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div></div>
-              <div class="sc-col sc-name"><div class="source-icon source-remnant"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="#6366F1"/><path d="M9 12l2 2 4-4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span>Remnant</span></div>
-              <div class="sc-col sc-center">230</div>
-              <div class="sc-col sc-center sc-price">$0.18</div>
-              <div class="sc-col"><span class="source-tag">Best to buy cheap</span></div>
-            </div>
-
-            <div class="sources-row <?= in_array('new',$editingSources)?'selected':'' ?>" data-source="new" onclick="toggleSource(this)">
-              <input type="checkbox" name="sources[]" value="new" <?= in_array('new',$editingSources)?'checked':'' ?> style="display:none">
-              <div class="sc-col sc-check"><div class="source-check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div></div>
-              <div class="sc-col sc-name"><div class="source-icon source-new"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#10B981"/><path d="M12 6v6l4 2" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div><span>New</span></div>
-              <div class="sc-col sc-center">250</div>
-              <div class="sc-col sc-center sc-price">$0.23</div>
-              <div class="sc-col"><span class="source-tag">Best to expand</span></div>
-            </div>
-
-          </div>
-          <div style="margin-top:14px;padding:11px 14px;background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r-sm);font-size:12.5px;color:var(--text-2);display:flex;align-items:center;gap:8px">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            Want a specific source? <a href="mailto:support@advora.com" style="margin-left:4px;color:var(--yellow)">Contact admin</a> and we'll configure it for you.
+            <?php endforeach; ?>
           </div>
         </div>
       </div>
@@ -450,14 +395,10 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
           <label class="form-label">Daily Budget (USD) *</label>
           <div style="position:relative">
             <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text-2);font-weight:600">$</span>
-            <input type="number" name="daily_budget" id="f_budget" class="form-control" style="padding-left:26px"
-              min="1" step="0.01"
-              value="<?= htmlspecialchars((string)($editing['daily_budget'] ?? $editing['budget'] ?? '')) ?>"
-              placeholder="50.00" oninput="updateEstimate()">
+            <input type="number" name="daily_budget" id="f_budget" class="form-control" style="padding-left:26px" min="1" step="0.01" value="<?= htmlspecialchars((string)($editing['daily_budget'] ?? $editing['budget'] ?? '')) ?>" placeholder="50.00" oninput="updateEstimate()">
           </div>
           <div class="form-hint">Campaign pauses when daily budget is reached. Resets every day.</div>
         </div>
-
         <div class="form-group">
           <label class="form-label">Delivery Mode *</label>
           <div style="display:flex;gap:10px">
@@ -481,15 +422,14 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
             </div>
           </div>
         </div>
-
         <div class="alert alert-info" style="font-size:13px">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-          Your current balance: <strong style="margin-left:4px"><?= fmtMoney($user['balance']) ?></strong>
+          Your current balance: <strong style="margin-left:4px" data-live-balance><?= fmtMoney($user['balance']) ?></strong>
         </div>
         <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px;margin-top:8px">
           <div style="font-size:12px;color:var(--text-2);margin-bottom:6px">Estimated daily reach</div>
-          <div style="font-size:22px;font-weight:700;color:var(--yellow)" id="estViews">0</div>
-          <div style="font-size:12px;color:var(--text-2);margin-top:2px">estimated views per day</div>
+          <div style="font-size:22px;font-weight:700;color:var(--yellow)" id="estViews">~0</div>
+          <div style="font-size:12px;color:var(--text-2);margin-top:2px">estimated views per day (budget ÷ $<?= number_format(EST_CPV_DIVISOR, 2) ?>/view)</div>
         </div>
       </div>
 
@@ -539,10 +479,6 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
 .sc-price{font-weight:700;color:var(--yellow);font-size:13.5px}
 .source-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:transparent;transition:all .15s;flex-shrink:0}
 .source-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.source-premium{background:rgba(0,149,246,.12)}
-.source-standard{background:rgba(245,158,11,.12)}
-.source-remnant{background:rgba(99,102,241,.12)}
-.source-new{background:rgba(16,185,129,.12)}
 .source-tag{display:inline-block;font-size:11px;padding:3px 9px;background:var(--bg-4);border:1px solid var(--border);border-radius:20px;color:var(--text-2)}
 .delivery-btn{flex:1;background:var(--bg-3);border:2px solid var(--border-2);border-radius:var(--r);padding:14px 16px;cursor:pointer;transition:all .2s}
 .delivery-btn:hover{border-color:rgba(255,200,0,.3)}
@@ -552,14 +488,14 @@ $steps = ['Basics', 'Creative', 'Countries', 'Schedule', 'Sources', 'Filters', '
 </style>
 
 <script>
-var totalSteps   = 8;
-var currentStep  = 0;
-var selectedSources   = <?= json_encode(array_values($editingSources)) ?>;
+// ── IMPORTANT: Estimated daily reach uses divisor 0.20 ─
+const EST_CPV_DIVISOR = 0.20;
 
-// Error banner
+var totalSteps=8, currentStep=0;
+var selectedSources = <?= json_encode(array_values($editingSources)) ?>;
+
 (function(){
-  var e=document.createElement('div');
-  e.id='tabError'; e.className='alert alert-danger';
+  var e=document.createElement('div'); e.id='tabError'; e.className='alert alert-danger';
   e.style.cssText='display:none;margin:0 0 16px';
   var f=document.getElementById('wizardForm');
   if(f) f.parentNode.insertBefore(e,f);
@@ -568,31 +504,27 @@ var selectedSources   = <?= json_encode(array_values($editingSources)) ?>;
 var stepTitles=['Campaign Basics','Select Creative','Geo Targeting','Ad Schedule','Traffic Sources','Filters','Daily Budget','Review & Submit'];
 var stepDescs=['Name your campaign and set your CPV bid','Choose the HTML creative for this campaign','Select which countries to target','Choose when your ads should run (CST timezone)','Choose your traffic sources','Set IP and domain filters (optional)','Set your daily spend budget and delivery mode','Review all settings before submitting'];
 
-function goStep(n){
-  if(n>currentStep){ for(var i=currentStep;i<n;i++){ if(!validateStep(i)) return; } }
-  showStep(n);
-}
+function goStep(n){ if(n>currentStep){ for(var i=currentStep;i<n;i++){ if(!validateStep(i)) return; } } showStep(n); }
 function showStep(n){
   document.querySelectorAll('.tab-content').forEach(function(c,i){ c.classList.toggle('active',i===n); });
   document.querySelectorAll('.cmp-step-item').forEach(function(s,i){
     s.classList.remove('current','done');
-    if(i===n) s.classList.add('current');
-    else if(i<n) s.classList.add('done');
+    if(i===n) s.classList.add('current'); else if(i<n) s.classList.add('done');
   });
-  document.getElementById('stepTitle').textContent=stepTitles[n];
-  document.getElementById('stepDesc').textContent=stepDescs[n];
-  document.getElementById('progressBar').style.width=((n+1)/totalSteps*100)+'%';
-  document.getElementById('btnBack').style.visibility=n===0?'hidden':'visible';
-  var btn=document.getElementById('btnNext');
+  document.getElementById('stepTitle').textContent = stepTitles[n];
+  document.getElementById('stepDesc').textContent  = stepDescs[n];
+  document.getElementById('progressBar').style.width = ((n+1)/totalSteps*100) + '%';
+  document.getElementById('btnBack').style.visibility = n===0?'hidden':'visible';
+  var btn = document.getElementById('btnNext');
   if(n===totalSteps-1){
-    btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15"><polyline points="20 6 9 17 4 12"/></svg> <?= $editing?"Update Campaign":"Create Campaign" ?>';
-    btn.onclick=function(){ submitForm(); };
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15"><polyline points="20 6 9 17 4 12"/></svg> <?= $editing?"Update Campaign":"Create Campaign" ?>';
+    btn.onclick = function(){ submitForm(); };
   } else {
-    btn.innerHTML='Continue <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"/></svg>';
-    btn.onclick=nextStep;
+    btn.innerHTML = 'Continue <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="9 18 15 12 9 6"/></svg>';
+    btn.onclick = nextStep;
   }
   hideError();
-  currentStep=n;
+  currentStep = n;
   if(n===7) buildSummary();
   if(n===6) updateEstimate();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -608,9 +540,7 @@ function validateStep(n){
     if(!document.getElementById('f_name').value.trim()){showError('Please enter a campaign name');return false;}
     if(!parseFloat(document.getElementById('f_cpv').value)||parseFloat(document.getElementById('f_cpv').value)<=0){showError('Please enter a valid CPV bid');return false;}
   }
-  if(n===1){
-    if(!document.querySelector('input[name="creative_id"]:checked')){showError('Please select a creative');return false;}
-  }
+  if(n===1){ if(!document.querySelector('input[name="creative_id"]:checked')){showError('Please select a creative');return false;} }
   if(n===2){ if(selectedCountries.length===0){showError('Select at least one country');return false;} }
   if(n===4){ if(selectedSources.length===0){showError('Select at least one traffic source');return false;} }
   if(n===6){
@@ -620,53 +550,32 @@ function validateStep(n){
   return true;
 }
 
-// ── Geo targeting: countries + states ───────────────────
-const STATES_DATA  = <?= $statesJson ?>;
+// ── Geo ──
+const STATES_DATA = <?= $statesJson ?>;
 var selectedCountries = <?= json_encode(array_values($editing['countries']??[])) ?>;
-var selectedStates    = <?= $editingStatesJson ?>;  // ['US:California', 'US:Texas', ...]
+var selectedStates    = <?= $editingStatesJson ?>;
 var activeCountry     = null;
 
 function countryClick(el) {
   var code = el.dataset.code;
   var idx  = selectedCountries.indexOf(code);
-  if (idx === -1) {
-    selectedCountries.push(code);
-    el.classList.add('selected');
-  } else {
-    selectedCountries.splice(idx, 1);
-    el.classList.remove('selected');
-    // Remove states for this country
+  if (idx === -1) { selectedCountries.push(code); el.classList.add('selected'); }
+  else {
+    selectedCountries.splice(idx, 1); el.classList.remove('selected');
     selectedStates = selectedStates.filter(function(s){ return s.indexOf(code+':') !== 0; });
   }
-  updateCountryInputs();
-  openStatePicker(code);
+  updateCountryInputs(); openStatePicker(code);
 }
-
 function openStatePicker(code) {
   activeCountry = code;
   var states = STATES_DATA[code] || [];
-  var wrap   = document.getElementById('statePickerWrap');
-  var empty  = document.getElementById('statePickerEmpty');
-  var grid   = document.getElementById('stateGrid');
-  var label  = document.getElementById('statePickerLabel');
-
-  if (!states.length || selectedCountries.indexOf(code) === -1) {
-    wrap.style.display  = 'none';
-    empty.style.display = 'block';
-    return;
-  }
-
-  empty.style.display = 'none';
-  wrap.style.display  = 'block';
-
-  // Get country name
-  var countryName = code;
-  document.querySelectorAll('#countryGrid .country-item').forEach(function(el){
-    if (el.dataset.code === code) countryName = el.querySelector('.country-name').textContent;
-  });
-  label.textContent = countryName + ' — States / Regions';
-
-  // Build state checkboxes
+  var wrap=document.getElementById('statePickerWrap'), empty=document.getElementById('statePickerEmpty'),
+      grid=document.getElementById('stateGrid'), label=document.getElementById('statePickerLabel');
+  if (!states.length || selectedCountries.indexOf(code) === -1) { wrap.style.display='none'; empty.style.display='block'; return; }
+  empty.style.display='none'; wrap.style.display='block';
+  var name = code;
+  document.querySelectorAll('#countryGrid .country-item').forEach(function(el){ if (el.dataset.code === code) name = el.querySelector('.country-name').textContent; });
+  label.textContent = name + ' — States / Regions';
   grid.innerHTML = '';
   states.forEach(function(state) {
     var key = code + ':' + state;
@@ -676,247 +585,202 @@ function openStatePicker(code) {
     div.innerHTML = '<div class="state-cb ' + (checked?'checked':'') + '"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><span>' + state + '</span>';
     div.addEventListener('click', function() {
       var cb = div.querySelector('.state-cb');
-      if (selectedStates.indexOf(key) !== -1) {
-        selectedStates.splice(selectedStates.indexOf(key), 1);
-        cb.classList.remove('checked');
-        div.style.background = '';
-      } else {
-        selectedStates.push(key);
-        cb.classList.add('checked');
-        div.style.background = 'var(--yellow-dim)';
-      }
-      updateStateCount();
-      updateCountryInputs();
+      if (selectedStates.indexOf(key) !== -1) { selectedStates.splice(selectedStates.indexOf(key), 1); cb.classList.remove('checked'); div.style.background = ''; }
+      else { selectedStates.push(key); cb.classList.add('checked'); div.style.background = 'var(--yellow-dim)'; }
+      updateStateCount(); updateCountryInputs();
     });
     if (checked) div.style.background = 'var(--yellow-dim)';
     grid.appendChild(div);
   });
-
   updateStateCount();
 }
-
 function updateStateCount() {
   if (!activeCountry) return;
   var count = selectedStates.filter(function(s){ return s.indexOf(activeCountry+':') === 0; }).length;
   var total = (STATES_DATA[activeCountry] || []).length;
-  var el = document.getElementById('stateSelCount');
-  el.textContent = count > 0
-    ? count + ' of ' + total + ' states selected (targeted specifically)'
-    : 'All ' + total + ' states — no restriction (entire country)';
+  document.getElementById('stateSelCount').textContent = count > 0 ? count + ' of ' + total + ' states selected' : 'All ' + total + ' states — no restriction';
 }
-
-function selectAllStates() {
-  if (!activeCountry) return;
-  var states = STATES_DATA[activeCountry] || [];
-  selectedStates = selectedStates.filter(function(s){ return s.indexOf(activeCountry+':') !== 0; });
+function selectAllStates(){ if(!activeCountry) return; var states=STATES_DATA[activeCountry]||[];
+  selectedStates = selectedStates.filter(function(s){ return s.indexOf(activeCountry+':')!==0; });
   states.forEach(function(s){ selectedStates.push(activeCountry+':'+s); });
-  document.querySelectorAll('#stateGrid .state-cb').forEach(function(cb){
-    cb.classList.add('checked');
-    cb.parentElement.style.background = 'var(--yellow-dim)';
-  });
-  updateStateCount();
-  updateCountryInputs();
+  document.querySelectorAll('#stateGrid .state-cb').forEach(function(cb){ cb.classList.add('checked'); cb.parentElement.style.background='var(--yellow-dim)'; });
+  updateStateCount(); updateCountryInputs();
 }
-
-function clearAllStates() {
-  if (!activeCountry) return;
-  selectedStates = selectedStates.filter(function(s){ return s.indexOf(activeCountry+':') !== 0; });
-  document.querySelectorAll('#stateGrid .state-cb').forEach(function(cb){
-    cb.classList.remove('checked');
-    cb.parentElement.style.background = '';
-  });
-  updateStateCount();
-  updateCountryInputs();
+function clearAllStates(){ if(!activeCountry) return;
+  selectedStates = selectedStates.filter(function(s){ return s.indexOf(activeCountry+':')!==0; });
+  document.querySelectorAll('#stateGrid .state-cb').forEach(function(cb){ cb.classList.remove('checked'); cb.parentElement.style.background=''; });
+  updateStateCount(); updateCountryInputs();
 }
-
-function selectAllCountries() {
+function selectAllCountries(){
   selectedCountries = [];
-  document.querySelectorAll('#countryGrid .country-item').forEach(function(i){
-    selectedCountries.push(i.dataset.code);
-    i.classList.add('selected');
-  });
-  updateCountryInputs();
-  if (activeCountry) openStatePicker(activeCountry);
+  document.querySelectorAll('#countryGrid .country-item').forEach(function(i){ selectedCountries.push(i.dataset.code); i.classList.add('selected'); });
+  updateCountryInputs(); if (activeCountry) openStatePicker(activeCountry);
 }
-
-function clearAllCountries() {
-  selectedCountries = [];
-  selectedStates    = [];
+function clearAllCountries(){
+  selectedCountries = []; selectedStates = [];
   document.querySelectorAll('#countryGrid .country-item').forEach(function(i){ i.classList.remove('selected'); });
   activeCountry = null;
-  document.getElementById('statePickerWrap').style.display  = 'none';
+  document.getElementById('statePickerWrap').style.display = 'none';
   document.getElementById('statePickerEmpty').style.display = 'block';
   updateCountryInputs();
 }
-
-function updateCountryInputs() {
-  var c = document.getElementById('countryInputs');
-  c.innerHTML = '';
-  selectedCountries.forEach(function(code) {
-    var i = document.createElement('input'); i.type='hidden'; i.name='countries[]'; i.value=code; c.appendChild(i);
-  });
-  selectedStates.forEach(function(sv) {
-    // Only include states for selected countries
-    var cc = sv.split(':')[0];
-    if (selectedCountries.indexOf(cc) !== -1) {
-      var i = document.createElement('input'); i.type='hidden'; i.name='states[]'; i.value=sv; c.appendChild(i);
-    }
-  });
+function updateCountryInputs(){
+  var c = document.getElementById('countryInputs'); c.innerHTML = '';
+  selectedCountries.forEach(function(code){ var i=document.createElement('input'); i.type='hidden'; i.name='countries[]'; i.value=code; c.appendChild(i); });
+  selectedStates.forEach(function(sv){ var cc=sv.split(':')[0]; if (selectedCountries.indexOf(cc)!==-1) { var i=document.createElement('input'); i.type='hidden'; i.name='states[]'; i.value=sv; c.appendChild(i); } });
   document.getElementById('countryCount').textContent = selectedCountries.length + ' selected';
   updateGeoSummary();
 }
-
-function updateGeoSummary() {
-  var wrap  = document.getElementById('geoSummary');
-  var items = document.getElementById('geoSummaryItems');
+function updateGeoSummary(){
+  var wrap=document.getElementById('geoSummary'), items=document.getElementById('geoSummaryItems');
   if (selectedCountries.length === 0) { wrap.style.display='none'; return; }
-  wrap.style.display = 'block';
-  items.innerHTML = '';
-  selectedCountries.forEach(function(code) {
-    var countStates = selectedStates.filter(function(s){ return s.indexOf(code+':') === 0; }).length;
-    var badge = document.createElement('span');
-    badge.className = 'badge badge-yellow';
-    badge.style.cssText = 'cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:4px 10px';
-    badge.textContent = code + (countStates > 0 ? ' ('+countStates+' states)' : ' — All');
+  wrap.style.display='block'; items.innerHTML='';
+  selectedCountries.forEach(function(code){
+    var countStates = selectedStates.filter(function(s){ return s.indexOf(code+':')===0; }).length;
+    var badge = document.createElement('span'); badge.className='badge badge-yellow';
+    badge.style.cssText='cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:4px 10px';
+    badge.textContent = code + (countStates>0 ? ' ('+countStates+' states)' : ' — All');
     badge.onclick = function(){ openStatePicker(code); };
     items.appendChild(badge);
   });
 }
-
-// Init
 updateCountryInputs();
-// Pre-open first selected country's state picker
 if (selectedCountries.length > 0) openStatePicker(selectedCountries[0]);
 
-// Creative highlight
+// Creative card highlight
 document.querySelectorAll('.creative-card').forEach(function(card){
-  card.addEventListener('click',function(){
-    document.querySelectorAll('.creative-card').forEach(function(c){c.style.borderColor='';c.style.background='';});
-    card.style.borderColor='rgba(255,200,0,.35)';card.style.background='var(--yellow-dim)';
-    card.querySelector('input[type="radio"]').checked=true;
+  card.addEventListener('click', function(){
+    document.querySelectorAll('.creative-card').forEach(function(c){ c.style.borderColor=''; c.style.background=''; });
+    card.style.borderColor = 'rgba(255,200,0,.35)'; card.style.background = 'var(--yellow-dim)';
+    card.querySelector('input[type="radio"]').checked = true;
   });
 });
 
 // Radio groups
 document.querySelectorAll('.radio-group').forEach(function(grp){
   grp.querySelectorAll('.radio-option').forEach(function(opt){
-    opt.addEventListener('click',function(e){
-      if(e.target.tagName==='INPUT')return;
-      grp.querySelectorAll('.radio-option').forEach(function(o){o.classList.remove('selected');});
+    opt.addEventListener('click', function(e){
+      if (e.target.tagName === 'INPUT') return;
+      grp.querySelectorAll('.radio-option').forEach(function(o){ o.classList.remove('selected'); });
       opt.classList.add('selected');
-      var r=opt.querySelector('input');if(r)r.checked=true;
+      var r = opt.querySelector('input'); if (r) r.checked = true;
     });
   });
 });
 
 // Schedule
-function toggleCell(c){c.classList.toggle('active');}
-function selectAllSchedule(){document.querySelectorAll('.schedule-cell').forEach(function(c){c.classList.add('active');});}
-function clearSchedule(){document.querySelectorAll('.schedule-cell').forEach(function(c){c.classList.remove('active');});}
+function toggleCell(c){ c.classList.toggle('active'); }
+function selectAllSchedule(){ document.querySelectorAll('.schedule-cell').forEach(function(c){ c.classList.add('active'); }); }
+function clearSchedule(){ document.querySelectorAll('.schedule-cell').forEach(function(c){ c.classList.remove('active'); }); }
 function selectBusinessHours(){
   document.querySelectorAll('.schedule-cell').forEach(function(c){
-    var p=c.dataset.key.split('_').map(Number);
-    if(p[0]<5&&p[1]>=9&&p[1]<=19) c.classList.add('active');
-    else c.classList.remove('active');
+    var p = c.dataset.key.split('_').map(Number);
+    if (p[0]<5 && p[1]>=9 && p[1]<=19) c.classList.add('active'); else c.classList.remove('active');
   });
 }
 function buildSchedulePayload(){
-  var c=document.getElementById('scheduleInputs');c.innerHTML='';
+  var c = document.getElementById('scheduleInputs'); c.innerHTML = '';
   document.querySelectorAll('.schedule-cell.active').forEach(function(s){
-    var i=document.createElement('input');i.type='hidden';i.name='schedule[]';i.value=s.dataset.key;c.appendChild(i);
+    var i=document.createElement('input'); i.type='hidden'; i.name='schedule[]'; i.value=s.dataset.key; c.appendChild(i);
   });
 }
 
 // Sources
 function toggleSource(row){
   var src=row.dataset.source, chk=row.querySelector('input[type="checkbox"]');
-  if(row.classList.contains('selected')){
-    row.classList.remove('selected');chk.checked=false;
-    selectedSources=selectedSources.filter(function(s){return s!==src;});
+  if (row.classList.contains('selected')) {
+    row.classList.remove('selected'); chk.checked=false;
+    selectedSources = selectedSources.filter(function(s){ return s!==src; });
   } else {
-    row.classList.add('selected');chk.checked=true;
-    if(selectedSources.indexOf(src)===-1) selectedSources.push(src);
+    row.classList.add('selected'); chk.checked=true;
+    if (selectedSources.indexOf(src) === -1) selectedSources.push(src);
   }
 }
 
 // Delivery
 function setDelivery(mode){
-  document.getElementById('d_asap').classList.toggle('active',mode==='asap');
-  document.getElementById('d_even').classList.toggle('active',mode==='even');
-  document.getElementById('r_asap').checked=mode==='asap';
-  document.getElementById('r_even').checked=mode==='even';
+  document.getElementById('d_asap').classList.toggle('active', mode==='asap');
+  document.getElementById('d_even').classList.toggle('active', mode==='even');
+  document.getElementById('r_asap').checked = mode==='asap';
+  document.getElementById('r_even').checked = mode==='even';
 }
 
-// IP/Domain tags
-var ipItems=<?= json_encode(array_values($editing['ip_list']??[])) ?>;
-var domainItems=<?= json_encode(array_values($editing['domain_list']??[])) ?>;
-function renderTags(cid,hid,items,type){
-  var c=document.getElementById(cid);c.innerHTML='';
-  if(!items.length){c.innerHTML='<div style="color:var(--text-3);font-size:12px;padding:6px">No '+type+' added</div>';return;}
-  items.forEach(function(val,i){
-    var tag=document.createElement('div');tag.className='ip-tag';
-    tag.innerHTML='<span>'+val+'</span><span class="remove-tag" data-idx="'+i+'">&times;</span>';
-    tag.querySelector('.remove-tag').addEventListener('click',function(){items.splice(i,1);document.getElementById(hid).value=items.join(',');renderTags(cid,hid,items,type);});
+// IP/Domain
+var ipItems     = <?= json_encode(array_values($editing['ip_list']??[])) ?>;
+var domainItems = <?= json_encode(array_values($editing['domain_list']??[])) ?>;
+function renderTags(cid, hid, items, type){
+  var c = document.getElementById(cid); c.innerHTML = '';
+  if (!items.length) { c.innerHTML = '<div style="color:var(--text-3);font-size:12px;padding:6px">No '+type+' added</div>'; return; }
+  items.forEach(function(val, i){
+    var tag = document.createElement('div'); tag.className = 'ip-tag';
+    tag.innerHTML = '<span>' + val + '</span><span class="remove-tag" data-idx="'+i+'">&times;</span>';
+    tag.querySelector('.remove-tag').addEventListener('click', function(){ items.splice(i,1); document.getElementById(hid).value=items.join(','); renderTags(cid,hid,items,type); });
     c.appendChild(tag);
   });
 }
 renderTags('ipListDisplay','ipListHidden',ipItems,'IPs');
 renderTags('domainListDisplay','domainListHidden',domainItems,'domains');
-function addIp(){var v=document.getElementById('ipInput').value.trim();if(!v)return;ipItems.push(v);document.getElementById('ipListHidden').value=ipItems.join(',');renderTags('ipListDisplay','ipListHidden',ipItems,'IPs');document.getElementById('ipInput').value='';}
-function addDomain(){var v=document.getElementById('domainInput').value.trim();if(!v)return;domainItems.push(v);document.getElementById('domainListHidden').value=domainItems.join(',');renderTags('domainListDisplay','domainListHidden',domainItems,'domains');document.getElementById('domainInput').value='';}
-document.getElementById('ipInput').addEventListener('keypress',function(e){if(e.key==='Enter'){e.preventDefault();addIp();}});
-document.getElementById('domainInput').addEventListener('keypress',function(e){if(e.key==='Enter'){e.preventDefault();addDomain();}});
+function addIp(){ var v=document.getElementById('ipInput').value.trim(); if(!v) return; ipItems.push(v); document.getElementById('ipListHidden').value=ipItems.join(','); renderTags('ipListDisplay','ipListHidden',ipItems,'IPs'); document.getElementById('ipInput').value=''; }
+function addDomain(){ var v=document.getElementById('domainInput').value.trim(); if(!v) return; domainItems.push(v); document.getElementById('domainListHidden').value=domainItems.join(','); renderTags('domainListDisplay','domainListHidden',domainItems,'domains'); document.getElementById('domainInput').value=''; }
+document.getElementById('ipInput').addEventListener('keypress', function(e){ if(e.key==='Enter'){ e.preventDefault(); addIp(); } });
+document.getElementById('domainInput').addEventListener('keypress', function(e){ if(e.key==='Enter'){ e.preventDefault(); addDomain(); } });
 
-// Estimate
+// ── ESTIMATED REACH — budget / 0.20 per view ────────
 function updateEstimate(){
-  var budget=parseFloat(document.getElementById('f_budget').value||0);
-  var est=budget>0?Math.round(budget/0.20):0;
-  var el=document.getElementById('estViews');
-  if(el) el.textContent='~'+est.toLocaleString();
+  var budget = parseFloat(document.getElementById('f_budget').value || 0);
+  var est = budget > 0 ? Math.round(budget / EST_CPV_DIVISOR) : 0;
+  var el = document.getElementById('estViews');
+  if (el) el.textContent = '~' + est.toLocaleString();
 }
+// Attach listener at DOM load too (in case oninput is stripped)
+document.addEventListener('DOMContentLoaded', function(){
+  var bi = document.getElementById('f_budget');
+  if (bi) bi.addEventListener('input', updateEstimate);
+  updateEstimate();
+});
 
 // Summary
 function buildSummary(){
-  buildSchedulePayload();updateCountryInputs();
+  buildSchedulePayload(); updateCountryInputs();
   var name=document.getElementById('f_name').value||'-';
   var cpv=parseFloat(document.getElementById('f_cpv').value||0).toFixed(2);
   var budget=parseFloat(document.getElementById('f_budget').value||0).toFixed(2);
   var schedCnt=document.querySelectorAll('.schedule-cell.active').length;
   var delivery=document.querySelector('input[name="delivery"]:checked');
-  var est=parseFloat(budget)>0?Math.round(parseFloat(budget)/0.20):0;
+  var est = parseFloat(budget) > 0 ? Math.round(parseFloat(budget) / EST_CPV_DIVISOR) : 0;
   var srcLabels={premium:'Premium',standard:'Standard',remnant:'Remnant','new':'New'};
 
-  var items=[
-    ['Name',name],['CPV Bid','$'+cpv],['Daily Budget','$'+budget],
-    ['Delivery',delivery?delivery.value.toUpperCase():'Even'],
-    ['Countries',selectedCountries.length+' selected'],
-    ['Schedule',schedCnt===0?'24/7':schedCnt+' slots (CST)'],
-    ['Sources',selectedSources.length+' selected'],
+  var items = [
+    ['Name',name], ['CPV Bid','$'+cpv], ['Daily Budget','$'+budget],
+    ['Delivery', delivery?delivery.value.toUpperCase():'Even'],
+    ['Countries', selectedCountries.length+' selected'],
+    ['Schedule', schedCnt===0?'24/7':schedCnt+' slots (CST)'],
+    ['Sources', selectedSources.length+' selected'],
     ['Est. Daily Views','~'+est.toLocaleString()]
   ];
-  document.getElementById('summaryArea').innerHTML=items.map(function(it){
+  document.getElementById('summaryArea').innerHTML = items.map(function(it){
     return '<div class="summary-item"><div class="summary-label">'+it[0]+'</div><div class="summary-value" style="font-size:14px">'+it[1]+'</div></div>';
   }).join('');
 
   var geoHtml = '';
   if (selectedCountries.length > 0) {
     geoHtml += '<div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;font-weight:600">Geo Targeting</div><div style="display:flex;gap:5px;flex-wrap:wrap">';
-    selectedCountries.forEach(function(code) {
-      var countS = selectedStates.filter(function(s){ return s.indexOf(code+':') === 0; }).length;
-      geoHtml += '<span class="badge badge-yellow" style="cursor:pointer" title="Click to see states">' + code + (countS > 0 ? ' <span style=\'opacity:.7\'>+'+countS+' states</span>' : ' — All') + '</span>';
+    selectedCountries.forEach(function(code){
+      var countS = selectedStates.filter(function(s){ return s.indexOf(code+':')===0; }).length;
+      geoHtml += '<span class="badge badge-yellow">' + code + (countS > 0 ? ' <span style="opacity:.7">+'+countS+' states</span>' : ' — All') + '</span>';
     });
     geoHtml += '</div>';
   }
   document.getElementById('reviewCountries').innerHTML = geoHtml;
 
-  document.getElementById('reviewSources').innerHTML=selectedSources.length>0
-    ?'<div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;font-weight:600">Traffic Sources</div><div style="display:flex;gap:5px;flex-wrap:wrap">'+selectedSources.map(function(s){return'<span class="badge badge-info">'+(srcLabels[s]||s)+'</span>';}).join('')+'</div>'
-    :'';
+  document.getElementById('reviewSources').innerHTML = selectedSources.length > 0
+    ? '<div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;font-weight:600">Traffic Sources</div><div style="display:flex;gap:5px;flex-wrap:wrap">' + selectedSources.map(function(s){ return '<span class="badge badge-info">'+(srcLabels[s]||s)+'</span>'; }).join('') + '</div>'
+    : '';
 }
 
 function submitForm(){
-  buildSchedulePayload();updateCountryInputs();
-  for(var i=0;i<totalSteps-1;i++){ if(!validateStep(i)){showStep(i);return;} }
+  buildSchedulePayload(); updateCountryInputs();
+  for (var i=0; i<totalSteps-1; i++) { if (!validateStep(i)) { showStep(i); return; } }
   document.getElementById('wizardForm').submit();
 }
 </script>

@@ -1,3 +1,19 @@
 [
-   
+    {
+        "id": "USR-8261AAE9",
+        "username": "user",
+        "password": "$2y$12$PVi4vFSY/D9RxXOsIUoeiOHEWtVoSBBXNBSxLtL5asbIQzcI/pXnW",
+        "email": "Account11238@yahoo.com",
+        "full_name": "user",
+        "phone": "123123123123",
+        "address": "",
+        "telegram_id": "hex",
+        "business_name": "",
+        "business_address": "",
+        "doc_verified": true,
+        "balance": 0,
+        "account_type": "rookie",
+        "disabled": false,
+        "created_at": 1776888360
+    }
 ]
