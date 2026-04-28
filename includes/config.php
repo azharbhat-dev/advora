@@ -23,16 +23,23 @@ define('NOTIFICATIONS_FILE', 'notifications');
 define('INSIGHTS_FILE',      'insights');
 define('ADMIN_NOTIF_FILE',   'admin_notifications');
 
+// ── Default global campaign limit ───────────────────────
+// Hard cap on how many campaigns a single user may have
+// (counts ALL statuses: active, paused, review, pending, rejected).
+// Admin can override per-user via /admin/campaign_capacity.php
+if (!defined('DEFAULT_CAMPAIGN_LIMIT')) define('DEFAULT_CAMPAIGN_LIMIT', 3);
+
+// ── Daily budget minimum (USD) ──────────────────────────
+if (!defined('MIN_DAILY_BUDGET')) define('MIN_DAILY_BUDGET', 50.0);
+
 // ── DB Config ───────────────────────────────────────────
-// Edit these values before uploading to Hostinger.
-// You can also define them in /includes/db_config.php instead.
 if (file_exists(__DIR__ . '/db_config.php')) {
     require_once __DIR__ . '/db_config.php';
 }
 if (!defined('DB_HOST'))    define('DB_HOST',    'localhost');
-if (!defined('DB_NAME'))    define('DB_NAME',    'advora');
-if (!defined('DB_USER'))    define('DB_USER',    'root');
-if (!defined('DB_PASS'))    define('DB_PASS',    '');
+if (!defined('DB_NAME'))    define('DB_NAME',    'u668995464_advoradb');
+if (!defined('DB_USER'))    define('DB_USER',    'u668995464_advora');
+if (!defined('DB_PASS'))    define('DB_PASS',    'Cl@ssm@t3@007');
 if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
 
 // ── PDO Connection (singleton) ──────────────────────────
@@ -52,6 +59,56 @@ function db(): PDO {
         die('Database connection failed: ' . htmlspecialchars($e->getMessage()));
     }
     return $pdo;
+}
+
+// ── Auto-detect campaign_limit column (graceful before migration) ─
+function _hasCampaignLimitColumn(): bool {
+    static $has = null;
+    if ($has !== null) return $has;
+    try {
+        $r = db()->query("SHOW COLUMNS FROM users LIKE 'campaign_limit'")->fetch();
+        $has = !empty($r);
+    } catch (Exception $e) {
+        $has = false;
+    }
+    return $has;
+}
+
+// ── Auto-detect stats_hourly table (graceful before migration) ─
+function _hasHourlyStatsTable(): bool {
+    static $has = null;
+    if ($has !== null) return $has;
+    try {
+        $r = db()->query("SHOW TABLES LIKE 'stats_hourly'")->fetch();
+        $has = !empty($r);
+    } catch (Exception $e) {
+        $has = false;
+    }
+    return $has;
+}
+
+/**
+ * Add stats to the hourly bucket for the current CST hour.
+ * Called by admin/stats_injector.php so the dashboard chart shows
+ * true hour-accurate data live.
+ */
+function addHourlyStats($userId, $campaignId, $impressions, $views, $hits, $spent) {
+    if (!_hasHourlyStatsTable()) return;
+    $cstTz   = new DateTimeZone('America/Chicago');
+    $cstNow  = new DateTime('now', $cstTz);
+    // Floor to the hour
+    $hour    = $cstNow->format('Y-m-d H:00:00');
+
+    $stmt = db()->prepare(
+        'INSERT INTO stats_hourly (user_id,campaign_id,hour_cst,impressions,clicks,good_hits,spent)
+         VALUES (?,?,?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE
+           impressions = impressions + VALUES(impressions),
+           clicks      = clicks      + VALUES(clicks),
+           good_hits   = good_hits   + VALUES(good_hits),
+           spent       = spent       + VALUES(spent)'
+    );
+    $stmt->execute([$userId, $campaignId, $hour, (int)$impressions, (int)$hits, (int)$views, (float)$spent]);
 }
 
 // ── Generic helpers ─────────────────────────────────────
@@ -78,8 +135,6 @@ function jdec($v, $default = []) {
 
 // ════════════════════════════════════════════════════════
 // readJson() / writeJson() — SQL-BACKED SHIMS
-// Every page in the project calls readJson(USERS_FILE) etc.
-// We intercept the "file" tag and route to the correct table.
 // ════════════════════════════════════════════════════════
 
 function readJson($fileTag, $default = []) {
@@ -95,8 +150,6 @@ function readJson($fileTag, $default = []) {
         case 'settings':            return _loadSettings();
         case 'network':             return _loadNetworkNotice();
         default:
-            // Fallback for subscriptions.json and any other legacy path
-            // subscriptions.json → subscriptions table
             if (str_contains($fileTag, 'subscriptions')) return _loadSubscriptions();
             return $default;
     }
@@ -139,19 +192,19 @@ function _userRowToArr($r) {
         'doc_verified'     => (bool)$r['doc_verified'],
         'balance'          => (float)$r['balance'],
         'account_type'     => $r['account_type']     ?? 'rookie',
+        'campaign_limit'   => isset($r['campaign_limit']) ? (int)$r['campaign_limit'] : DEFAULT_CAMPAIGN_LIMIT,
         'disabled'         => (bool)$r['disabled'],
         'created_at'       => (int)$r['created_at'],
     ];
 }
 function _saveUsers($users) {
     $pdo = db();
+    $hasLimitCol = _hasCampaignLimitColumn();
     $pdo->beginTransaction();
     try {
-        // Upsert each user in the array
-        $existing = $pdo->query('SELECT id FROM users')->fetchAll(PDO::FETCH_COLUMN);
+        $existing    = $pdo->query('SELECT id FROM users')->fetchAll(PDO::FETCH_COLUMN);
         $incomingIds = array_column($users, 'id');
 
-        // Delete users not in incoming list (mirror array semantics)
         $toDelete = array_diff($existing, $incomingIds);
         if ($toDelete) {
             $ph = implode(',', array_fill(0, count($toDelete), '?'));
@@ -159,25 +212,29 @@ function _saveUsers($users) {
             $del->execute(array_values($toDelete));
         }
 
-        $sql = 'INSERT INTO users (id,username,password,email,full_name,phone,address,telegram_id,business_name,business_address,doc_verified,balance,account_type,disabled,created_at)
-                VALUES (:id,:username,:password,:email,:full_name,:phone,:address,:telegram_id,:business_name,:business_address,:doc_verified,:balance,:account_type,:disabled,:created_at)
-                ON DUPLICATE KEY UPDATE
-                  username=VALUES(username),
-                  password=VALUES(password),
-                  email=VALUES(email),
-                  full_name=VALUES(full_name),
-                  phone=VALUES(phone),
-                  address=VALUES(address),
-                  telegram_id=VALUES(telegram_id),
-                  business_name=VALUES(business_name),
-                  business_address=VALUES(business_address),
-                  doc_verified=VALUES(doc_verified),
-                  balance=VALUES(balance),
-                  account_type=VALUES(account_type),
-                  disabled=VALUES(disabled)';
+        if ($hasLimitCol) {
+            $sql = 'INSERT INTO users (id,username,password,email,full_name,phone,address,telegram_id,business_name,business_address,doc_verified,balance,account_type,campaign_limit,disabled,created_at)
+                    VALUES (:id,:username,:password,:email,:full_name,:phone,:address,:telegram_id,:business_name,:business_address,:doc_verified,:balance,:account_type,:campaign_limit,:disabled,:created_at)
+                    ON DUPLICATE KEY UPDATE
+                      username=VALUES(username), password=VALUES(password), email=VALUES(email),
+                      full_name=VALUES(full_name), phone=VALUES(phone), address=VALUES(address),
+                      telegram_id=VALUES(telegram_id), business_name=VALUES(business_name),
+                      business_address=VALUES(business_address), doc_verified=VALUES(doc_verified),
+                      balance=VALUES(balance), account_type=VALUES(account_type),
+                      campaign_limit=VALUES(campaign_limit), disabled=VALUES(disabled)';
+        } else {
+            $sql = 'INSERT INTO users (id,username,password,email,full_name,phone,address,telegram_id,business_name,business_address,doc_verified,balance,account_type,disabled,created_at)
+                    VALUES (:id,:username,:password,:email,:full_name,:phone,:address,:telegram_id,:business_name,:business_address,:doc_verified,:balance,:account_type,:disabled,:created_at)
+                    ON DUPLICATE KEY UPDATE
+                      username=VALUES(username), password=VALUES(password), email=VALUES(email),
+                      full_name=VALUES(full_name), phone=VALUES(phone), address=VALUES(address),
+                      telegram_id=VALUES(telegram_id), business_name=VALUES(business_name),
+                      business_address=VALUES(business_address), doc_verified=VALUES(doc_verified),
+                      balance=VALUES(balance), account_type=VALUES(account_type), disabled=VALUES(disabled)';
+        }
         $stmt = $pdo->prepare($sql);
         foreach ($users as $u) {
-            $stmt->execute([
+            $params = [
                 'id'               => $u['id'],
                 'username'         => $u['username'],
                 'password'         => $u['password'],
@@ -193,7 +250,11 @@ function _saveUsers($users) {
                 'account_type'     => $u['account_type']     ?? 'rookie',
                 'disabled'         => !empty($u['disabled']) ? 1 : 0,
                 'created_at'       => (int)($u['created_at'] ?? time()),
-            ]);
+            ];
+            if ($hasLimitCol) {
+                $params['campaign_limit'] = (int)($u['campaign_limit'] ?? DEFAULT_CAMPAIGN_LIMIT);
+            }
+            $stmt->execute($params);
         }
         $pdo->commit();
     } catch (Exception $e) {
@@ -426,8 +487,6 @@ function _saveStats($items) {
     $pdo = db();
     $pdo->beginTransaction();
     try {
-        // Stats: identity = campaign_id + date. Easiest is truncate + reinsert
-        // since entire array is passed around like a JSON file.
         $pdo->exec('DELETE FROM stats');
         $stmt = $pdo->prepare(
             'INSERT INTO stats (user_id,campaign_id,date,impressions,clicks,good_hits,spent)
@@ -592,7 +651,6 @@ function _loadSettings() {
     foreach ($wRows as $w) {
         $wallets[$w['code']] = ['address' => $w['address'], 'network' => $w['network']];
     }
-    // Guarantee required wallet slots exist (UI reads them directly)
     foreach (['BTC','TRC20','ERC20','BEP20'] as $need) {
         if (!isset($wallets[$need])) {
             $wallets[$need] = ['address' => '', 'network' => $need];
@@ -607,7 +665,6 @@ function _saveSettings($data) {
     $pdo = db();
     $pdo->beginTransaction();
     try {
-        // Countries — truncate + reinsert
         if (isset($data['countries']) && is_array($data['countries'])) {
             $pdo->exec('DELETE FROM countries');
             $stmt = $pdo->prepare('INSERT INTO countries (code,name) VALUES (:code,:name)');
@@ -615,7 +672,6 @@ function _saveSettings($data) {
                 $stmt->execute(['code' => $c['code'], 'name' => $c['name']]);
             }
         }
-        // Wallets — upsert
         if (isset($data['wallets']) && is_array($data['wallets'])) {
             $stmt = $pdo->prepare(
                 'INSERT INTO wallets (code,address,network) VALUES (:code,:address,:network)
@@ -748,11 +804,12 @@ function currentUser() {
 function updateUser($userId, $data) {
     if (empty($data)) return;
     $allowed = ['username','password','email','full_name','phone','address','telegram_id',
-                'business_name','business_address','doc_verified','balance','account_type','disabled'];
+                'business_name','business_address','doc_verified','balance','account_type','disabled','campaign_limit'];
     $sets = [];
     $params = ['id' => $userId];
     foreach ($data as $k => $v) {
         if (!in_array($k, $allowed, true)) continue;
+        if ($k === 'campaign_limit' && !_hasCampaignLimitColumn()) continue;
         if ($k === 'doc_verified' || $k === 'disabled') $v = !empty($v) ? 1 : 0;
         $sets[] = "$k = :$k";
         $params[$k] = $v;
@@ -764,13 +821,38 @@ function updateUser($userId, $data) {
 }
 
 // ════════════════════════════════════════════════════════
-// HIGH-LEVEL HELPERS (kept API-compatible with old code)
+// CAMPAIGN CAPACITY HELPERS
+// ════════════════════════════════════════════════════════
+
+/** Returns the campaign limit for a given user (per-user override or global default). */
+function getUserCampaignLimit($userId): int {
+    if (_hasCampaignLimitColumn()) {
+        $stmt = db()->prepare('SELECT campaign_limit FROM users WHERE id = ?');
+        $stmt->execute([$userId]);
+        $v = $stmt->fetchColumn();
+        if ($v !== false && $v !== null) return (int)$v;
+    }
+    return (int)DEFAULT_CAMPAIGN_LIMIT;
+}
+
+/** Returns the number of campaigns a user currently owns (ALL statuses). */
+function getUserCampaignCount($userId): int {
+    $stmt = db()->prepare('SELECT COUNT(*) FROM campaigns WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    return (int)$stmt->fetchColumn();
+}
+
+/** True if user is at or over their campaign limit. */
+function userAtCampaignLimit($userId): bool {
+    return getUserCampaignCount($userId) >= getUserCampaignLimit($userId);
+}
+
+// ════════════════════════════════════════════════════════
+// HIGH-LEVEL HELPERS
 // ════════════════════════════════════════════════════════
 function getSettings() { return _loadSettings(); }
-
 function getNetworkNotice() { return _loadNetworkNotice(); }
 
-// ── Flash messages ──────────────────────────────────────
 function flash($msg, $type = 'success') {
     $_SESSION['flash'] = ['msg' => $msg, 'type' => $type];
 }
@@ -883,7 +965,6 @@ function addAdminNotification($userId, $username, $type, $title, $message) {
         'AN-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8)),
         $userId, $username, $type, $title, $message, time()
     ]);
-    // Cap at 500 rows to match old behavior
     db()->exec(
         "DELETE FROM admin_notifications
          WHERE id NOT IN (
@@ -917,6 +998,12 @@ function getAdminNotifications($userId = null) {
 function countUnreadAdminNotifs() {
     return (int)db()->query('SELECT COUNT(*) FROM admin_notifications WHERE is_read = 0')->fetchColumn();
 }
+
+/** Total count of admin notifications (read + unread). Used to detect new activity. */
+function countTotalAdminNotifs() {
+    return (int)db()->query('SELECT COUNT(*) FROM admin_notifications')->fetchColumn();
+}
+
 function markAllAdminNotifsRead() {
     db()->exec('UPDATE admin_notifications SET is_read = 1');
 }

@@ -48,6 +48,10 @@ $pendingCampaigns = count(array_filter(readJson(CAMPAIGNS_FILE), fn($c) => in_ar
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
     Subscriptions
   </a>
+  <a href="/admin/campaign_capacity.php" class="nav-item <?= $currentPage==='campaign_capacity' ?'active':'' ?>">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7L12 3 4 7l8 4 8-4z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/></svg>
+    Campaign Capacity
+  </a>
   <a href="/admin/stats_injector.php" class="nav-item <?= $currentPage==='stats_injector'?'active':'' ?>">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
     Stats Injector

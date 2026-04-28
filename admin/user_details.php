@@ -5,9 +5,13 @@ $users     = readJson(USERS_FILE);
 $campaigns = readJson(CAMPAIGNS_FILE);
 $topups    = readJson(TOPUPS_FILE);
 $stats     = readJson(STATS_FILE);
+$creatives = readJson(CREATIVES_FILE);
 
 // Sort users by created_at desc
 usort($users, fn($a,$b) => ($b['created_at']??0) <=> ($a['created_at']??0));
+
+$creativeMap = [];
+foreach ($creatives as $cr) $creativeMap[$cr['id']] = $cr;
 
 $acctColors = [
     'rookie'       => ['#8888a8','rgba(136,136,168,0.1)','Rookie'],
@@ -75,7 +79,7 @@ if ($viewUserId) {
   </div>
   <div class="stat-card">
     <div class="stat-label">Campaigns</div>
-    <div class="stat-value"><?= count($uCampaigns) ?></div>
+    <div class="stat-value"><?= count($uCampaigns) ?> / <?= getUserCampaignLimit($viewUser['id']) ?></div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Impressions</div>
@@ -157,6 +161,13 @@ if ($viewUserId) {
       <span class="dk">Account Type</span>
       <span style="color:<?= $atc[0] ?>;font-weight:700"><?= $atc[2] ?></span>
     </div>
+    <div class="detail-row">
+      <span class="dk">Campaign Limit</span>
+      <span>
+        <strong><?= getUserCampaignLimit($viewUser['id']) ?></strong>
+        <a href="/admin/campaign_capacity.php?q=<?= urlencode($viewUser['username']) ?>" class="btn btn-secondary btn-sm" style="margin-left:6px;padding:3px 8px;font-size:11px">Edit</a>
+      </span>
+    </div>
   </div>
 </div>
 </div>
@@ -173,7 +184,7 @@ if ($viewUserId) {
     <table>
       <thead>
         <tr>
-          <th>Campaign ID</th><th>Name</th><th>Status</th><th>CPV</th>
+          <th>Campaign ID</th><th>Name</th><th>Creative</th><th>Status</th><th>CPV</th>
           <th>Daily Budget</th><th>Spent</th><th>Impressions</th>
           <th>Views</th><th>Hits</th><th>CTR</th><th>Countries</th><th>Created</th><th></th>
         </tr>
@@ -183,10 +194,25 @@ if ($viewUserId) {
         $sc  = ['active'=>'badge-success','pending'=>'badge-pending','paused'=>'badge-muted','review'=>'badge-info','rejected'=>'badge-danger'][$camp['status']]??'badge-muted';
         $sl  = $camp['status']==='review' ? 'Under Review' : $camp['status'];
         $ctr = ($camp['impressions']??0)>0 ? round(($camp['good_hits']??0)/($camp['impressions']??1)*100,2) : 0;
+        $cr  = !empty($camp['creative_id']) && isset($creativeMap[$camp['creative_id']]) ? $creativeMap[$camp['creative_id']] : null;
       ?>
       <tr>
         <td><code style="color:var(--yellow);font-size:11px"><?= $camp['campaign_id'] ?></code></td>
         <td><strong><?= htmlspecialchars($camp['name']) ?></strong></td>
+        <td>
+          <?php if ($cr): ?>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px;font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<?= htmlspecialchars($cr['name']) ?>"><?= htmlspecialchars($cr['name']) ?></span>
+            <button type="button" class="btn btn-secondary btn-sm" style="padding:3px 7px"
+              onclick="previewCreative('<?= htmlspecialchars($cr['id']) ?>', '<?= htmlspecialchars(addslashes($cr['name'])) ?>')">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              View
+            </button>
+          </div>
+          <?php else: ?>
+          <span style="color:var(--text-3);font-size:11px">— None —</span>
+          <?php endif; ?>
+        </td>
         <td><span class="badge <?= $sc ?>"><?= $sl ?></span></td>
         <td><?= fmtMoney($camp['cpv']??$camp['cpc']??0) ?></td>
         <td><?= fmtMoney($camp['daily_budget']??$camp['budget']??0) ?></td>
@@ -243,6 +269,44 @@ if ($viewUserId) {
   <?php endif; ?>
 </div>
 
+<!-- Creative Preview Modal -->
+<div class="modal" id="previewModal">
+  <div class="modal-box" style="max-width:900px;width:95vw">
+    <div class="modal-header">
+      <div class="modal-title" id="previewTitle">Creative Preview</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a id="previewOpenBtn" href="#" target="_blank" class="btn btn-secondary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Open in Tab
+        </a>
+        <div class="modal-close" onclick="closeModal('previewModal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+      </div>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden">
+      <div style="background:var(--bg-3);padding:8px 12px;display:flex;gap:6px;align-items:center;border-bottom:1px solid var(--border)">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--red);opacity:.7"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--orange);opacity:.7"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--green);opacity:.7"></div>
+        <div style="flex:1;background:var(--bg-4);border-radius:4px;padding:3px 10px;font-size:11px;color:var(--text-3);margin-left:6px" id="previewUrlBar">Preview</div>
+      </div>
+      <iframe id="previewFrame" style="width:100%;height:500px;border:none;background:#fff" sandbox="allow-scripts allow-same-origin"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+function previewCreative(id, name) {
+  var url = '/admin/creatives.php?preview=' + encodeURIComponent(id);
+  document.getElementById('previewTitle').textContent  = name + ' — Creative Preview';
+  document.getElementById('previewFrame').src          = url;
+  document.getElementById('previewOpenBtn').href       = url;
+  document.getElementById('previewUrlBar').textContent = name + '.html';
+  openModal('previewModal');
+}
+</script>
+
 <?php else: ?>
 <!-- ── USER LIST VIEW ── -->
 
@@ -289,6 +353,7 @@ if ($viewUserId) {
   $docV     = !empty($u['doc_verified']);
   $statusCounts = ['active'=>0,'review'=>0,'paused'=>0,'pending'=>0,'rejected'=>0];
   foreach ($uCamps as $camp) { $s = $camp['status']??'pending'; if (isset($statusCounts[$s])) $statusCounts[$s]++; }
+  $userLim  = getUserCampaignLimit($u['id']);
 ?>
 <div class="user-card" data-username="<?= strtolower(htmlspecialchars($u['username'])) ?>"
      data-name="<?= strtolower(htmlspecialchars($u['full_name']??'')) ?>"
@@ -336,7 +401,7 @@ if ($viewUserId) {
     <!-- Campaign status breakdown -->
     <div style="margin-bottom:14px">
       <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;font-weight:600">
-        Campaigns (<?= count($uCamps) ?> total)
+        Campaigns (<?= count($uCamps) ?> / <?= $userLim ?>)
       </div>
       <?php if (empty($uCamps)): ?>
       <div style="font-size:12px;color:var(--text-3)">No campaigns yet</div>

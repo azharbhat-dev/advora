@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($cost > $curBal) {
                 flash('Insufficient balance — user has '.fmtMoney($curBal).' but needs '.fmtMoney($cost).' for '.$addViews.' views at '.fmtMoney($cpv).'/view', 'error');
             } else {
-                // Update campaign
+                // Update campaign totals
                 $campaigns[$foundIdx]['impressions'] = ($campaigns[$foundIdx]['impressions'] ?? 0) + $addImp;
                 $campaigns[$foundIdx]['clicks']      = ($campaigns[$foundIdx]['clicks']      ?? 0) + $addHits;
                 $campaigns[$foundIdx]['good_hits']   = ($campaigns[$foundIdx]['good_hits']   ?? 0) + $addViews;
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $users[$userIdx]['balance'] = round($curBal - $cost, 4);
                 writeJson(USERS_FILE, $users);
 
-                // Update / insert daily stats
+                // Update / insert daily stats (kept for Metrics page historical view)
                 $statFound = false;
                 foreach ($stats as &$s) {
                     if ($s['campaign_id'] === $cid && $s['date'] === $date) {
@@ -81,8 +81,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 writeJson(STATS_FILE, $stats);
 
+                // ── HOURLY BUCKET — drives the live dashboard chart ──
+                // Records into the CURRENT CST hour so the chart's bar at e.g. 14:00
+                // grows by exactly the injected amount, live.
+                addHourlyStats($found['user_id'], $cid, $addImp, $addViews, $addHits, $cost);
+
                 flash('Injected: '.$addImp.' impressions, '.$addViews.' views, '.$addHits.' hits. Balance deducted: '.fmtMoney($cost), 'success');
-                // Redirect back to same user
                 safeRedirect('/admin/stats_injector.php?user='.urlencode($found['user_id']).'&camp='.urlencode($cid));
             }
         }
@@ -124,9 +128,18 @@ usort($users, fn($a,$b) => strcmp($a['username']??'',$b['username']??''));
     </a>
 </div>
 
+<?php if (!_hasHourlyStatsTable()): ?>
+<div class="alert alert-warning">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div>
+        <strong>Migration pending:</strong> Run the SQL in <code>MIGRATION.sql</code> to enable live hourly chart updates. Stats injected now will still update totals correctly, but won't appear on the dashboard's hourly graph until the migration is run.
+    </div>
+</div>
+<?php endif; ?>
+
 <div class="alert alert-info">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-    <span>Adding <strong>views</strong> deducts from user balance: <strong>Cost = Views × CPV</strong>. Impressions and hits do not affect balance.</span>
+    <span>Adding <strong>views</strong> deducts from user balance: <strong>Cost = Views × CPV</strong>. Impressions and hits do not affect balance. Stats land in the <strong>current CST hour</strong> on the user's live chart.</span>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start" class="inj-grid">
@@ -233,8 +246,9 @@ usort($users, fn($a,$b) => strcmp($a['username']??'',$b['username']??''));
                 <div class="form-hint">Does not affect balance</div>
             </div>
             <div class="form-group">
-                <label class="form-label">Date</label>
+                <label class="form-label">Date (for historical metrics)</label>
                 <input type="date" name="date" class="form-control" value="<?= date('Y-m-d') ?>">
+                <div class="form-hint">Live chart always uses current CST hour</div>
             </div>
         </div>
 
@@ -322,7 +336,6 @@ function onUserChange() {
         return;
     }
 
-    // Show user info
     const uData = USER_MAP.find(u => u.id === uid);
     if (uData) {
         document.getElementById('uAvatar').textContent   = uData.username[0].toUpperCase();
@@ -333,7 +346,6 @@ function onUserChange() {
         document.getElementById('userInfoCard').style.display = 'block';
     }
 
-    // Populate campaign dropdown
     camp.innerHTML = '<option value="">— Choose campaign —</option>';
     const camps = USER_CAMPS[uid] || [];
     camps.forEach(function(c) {
@@ -348,7 +360,6 @@ function onUserChange() {
         camp.appendChild(opt);
     });
 
-    // Activate step 2
     step2.style.opacity       = '1';
     step2.style.pointerEvents = 'auto';
     document.getElementById('step2Num').style.background  = 'var(--yellow)';
@@ -374,10 +385,8 @@ function onCampChange() {
     document.getElementById('ci_maxviews').textContent = typeof maxViews === 'number' ? maxViews.toLocaleString() : maxViews;
     document.getElementById('campInfoCard').style.display = 'block';
 
-    // Set hidden form field
     document.getElementById('formCampId').value = opt.value;
 
-    // Activate step 3
     const step3 = document.getElementById('step3Card');
     step3.style.opacity       = '1';
     step3.style.pointerEvents = 'auto';
@@ -386,7 +395,6 @@ function onCampChange() {
     document.getElementById('step3Num').style.border     = 'none';
     document.getElementById('submitBtn').disabled = false;
 
-    // Reset inputs
     ['inp_imp','inp_views','inp_hits'].forEach(function(id){ document.getElementById(id).value=0; });
     document.getElementById('costPreview').style.display = 'none';
 }
@@ -417,14 +425,12 @@ function updateCostPreview() {
     }
 }
 
-// Quick-select from the table
 function quickSelect(userId, campId) {
     const sel = document.getElementById('userSelect');
     for (let i=0;i<sel.options.length;i++) {
         if (sel.options[i].value === userId) { sel.selectedIndex=i; break; }
     }
     onUserChange();
-    // Small delay to let options populate
     setTimeout(function() {
         const csel = document.getElementById('campSelect');
         for (let i=0;i<csel.options.length;i++) {
@@ -435,7 +441,6 @@ function quickSelect(userId, campId) {
     }, 50);
 }
 
-// Auto-select from URL params
 <?php if ($preUser): ?>
 (function() {
     const sel = document.getElementById('userSelect');

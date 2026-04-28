@@ -3,10 +3,22 @@ require_once __DIR__ . '/../includes/user_header.php';
 
 // Handle delete from list
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']??'') === 'delete') {
-    $delId    = $_POST['campaign_id'] ?? '';
-    $allCamps = readJson(CAMPAIGNS_FILE);
-    $allCamps = array_values(array_filter($allCamps, fn($x) => !($x['campaign_id'] === $delId && $x['user_id'] === $user['id'])));
-    writeJson(CAMPAIGNS_FILE, $allCamps);
+    $delId = $_POST['campaign_id'] ?? '';
+    // Look up campaign first so we can log it
+    $stmt = db()->prepare('SELECT name FROM campaigns WHERE campaign_id = ? AND user_id = ?');
+    $stmt->execute([$delId, $user['id']]);
+    $row = $stmt->fetch();
+
+    $stmt = db()->prepare('DELETE FROM campaigns WHERE campaign_id = ? AND user_id = ?');
+    $stmt->execute([$delId, $user['id']]);
+
+    if ($row) {
+        addAdminNotification($user['id'], $user['username'], 'campaign_deleted',
+            'Campaign Deleted',
+            $user['username'] . ' deleted campaign "' . $row['name'] . '" (' . $delId . ')'
+        );
+    }
+
     flash('Campaign deleted', 'success');
     safeRedirect('/user/campaigns.php');
 }
@@ -14,6 +26,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action']??'') === 'delete'
 $campaigns     = readJson(CAMPAIGNS_FILE);
 $userCampaigns = array_filter($campaigns, fn($c) => $c['user_id'] === $user['id']);
 $userCampaigns = array_reverse($userCampaigns);
+
+// Limit info
+$userLimit = getUserCampaignLimit($user['id']);
+$userCount = count(array_filter($campaigns, fn($c) => $c['user_id'] === $user['id']));
+$atLimit   = $userCount >= $userLimit;
+$pctUsed   = $userLimit > 0 ? round($userCount / $userLimit * 100) : 100;
 
 $filter = $_GET['status'] ?? 'all';
 if ($filter !== 'all') {
@@ -24,13 +42,31 @@ if ($filter !== 'all') {
 <div class="page-header">
     <div>
         <div class="page-title">Campaigns</div>
-        <div class="page-subtitle">Manage all your advertising campaigns</div>
+        <div class="page-subtitle">Manage all your advertising campaigns &middot; Using <strong style="color:var(--<?= $atLimit?'red':'yellow' ?>)"><?= $userCount ?> of <?= $userLimit ?></strong></div>
     </div>
+    <?php if ($atLimit): ?>
+    <button class="btn btn-secondary" onclick="alert('Campaign limit reached (<?= $userLimit ?>). Delete a campaign or contact admin to increase your limit.')" style="opacity:.6;cursor:not-allowed">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Limit Reached (<?= $userLimit ?>)
+    </button>
+    <?php else: ?>
     <a href="/user/create_campaign.php" class="btn btn-primary">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Create Campaign
     </a>
+    <?php endif; ?>
 </div>
+
+<?php if ($atLimit): ?>
+<div class="alert alert-warning">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div>
+      <strong>Campaign limit reached.</strong>
+      You have <?= $userCount ?> of <?= $userLimit ?> allowed campaigns (counts active, paused, under review, and rejected).
+      Delete a campaign or contact your admin for a higher limit.
+    </div>
+</div>
+<?php endif; ?>
 
 <div class="card">
     <div class="filter-bar">
@@ -48,7 +84,9 @@ if ($filter !== 'all') {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 11l18-5v12L3 14v-3z"/></svg>
         <h3>No campaigns found</h3>
         <p>Create your first campaign to get started</p>
+        <?php if (!$atLimit): ?>
         <a href="/user/create_campaign.php" class="btn btn-primary" style="margin-top:16px">Create Campaign</a>
+        <?php endif; ?>
     </div>
     <?php else: ?>
     <div class="table-wrap">

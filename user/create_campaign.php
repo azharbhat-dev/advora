@@ -9,7 +9,7 @@ $stmt = db()->prepare("SELECT * FROM creatives WHERE user_id = ? AND status = 'a
 $stmt->execute([$user['id']]);
 $approvedCreatives = $stmt->fetchAll();
 
-// Editing?
+// ── CAMPAIGN LIMIT CHECK (block before form is even shown for NEW campaigns) ─
 $editId  = $_GET['edit'] ?? null;
 $editing = null;
 if ($editId) {
@@ -37,6 +37,45 @@ if ($editId) {
     }
 }
 
+$userLimit  = getUserCampaignLimit($user['id']);
+$userCount  = getUserCampaignCount($user['id']);
+$atLimit    = !$editing && $userCount >= $userLimit;  // editing existing camp doesn't add to count
+
+if ($atLimit && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    // Show a friendly capped page instead of the wizard
+    ?>
+    <div class="page-header">
+      <div>
+        <div class="page-title">Create Campaign</div>
+        <div class="page-subtitle">Campaign capacity reached</div>
+      </div>
+      <a href="/user/campaigns.php" class="btn btn-secondary">&larr; Back</a>
+    </div>
+    <div class="card" style="max-width:640px;margin:0 auto">
+      <div style="text-align:center;padding:30px 20px">
+        <div style="width:64px;height:64px;background:rgba(255,144,0,.1);border:1px solid rgba(255,144,0,.25);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;color:var(--orange)">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div style="font-size:20px;font-weight:700;margin-bottom:8px">You've reached your campaign limit</div>
+        <div style="font-size:14px;color:var(--text-2);margin-bottom:20px;line-height:1.6">
+          You currently have <strong><?= $userCount ?></strong> of <strong><?= $userLimit ?></strong> allowed campaigns.<br>
+          This includes active, paused, under review, and rejected campaigns.
+        </div>
+        <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px 18px;font-size:13px;color:var(--text-2);margin-bottom:20px;text-align:left">
+          <strong style="color:var(--text)">To create more campaigns:</strong>
+          <ul style="margin:8px 0 0 18px;line-height:1.8">
+            <li>Delete a campaign you no longer need from the <a href="/user/campaigns.php">campaigns page</a></li>
+            <li>Or contact your admin to request a higher campaign limit</li>
+          </ul>
+        </div>
+        <a href="/user/campaigns.php" class="btn btn-primary">View My Campaigns</a>
+      </div>
+    </div>
+    <?php
+    require_once __DIR__ . '/../includes/footer.php';
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name        = trim($_POST['name'] ?? '');
     $cpv         = (float)($_POST['cpv'] ?? 0);
@@ -57,8 +96,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($cpv <= 0)          $errors[] = 'CPV bid must be greater than 0';
     if (!$creativeId)       $errors[] = 'Select a creative';
     if (empty($countries))  $errors[] = 'Select at least one country';
-    if ($dailyBudget < 1)   $errors[] = 'Daily budget must be at least $1.00';
+    if ($dailyBudget < MIN_DAILY_BUDGET) $errors[] = 'Daily budget must be at least ' . fmtMoney(MIN_DAILY_BUDGET);
     if (empty($sources))    $errors[] = 'Select at least one traffic source';
+
+    // Re-check campaign limit on POST (defence in depth)
+    if (!$editing && getUserCampaignCount($user['id']) >= $userLimit) {
+        $errors[] = 'Campaign limit reached (' . $userLimit . '). Delete a campaign or contact admin.';
+    }
 
     if (!empty($errors)) {
         flash(implode('. ', $errors), 'error');
@@ -117,15 +161,20 @@ $scheduleMap = $editing && !empty($editing['schedule'])
 $editingSources = $editing['sources'] ?? [];
 $steps = ['Basics','Creative','Countries','Schedule','Sources','Filters','Budget','Review'];
 
-// ── Divisor used for daily reach estimate (0.20 per view) ─
-// $1 of budget ≈ 1 / 0.20 = 5 views
+// Divisor used for daily reach estimate (0.20 per view)
 define('EST_CPV_DIVISOR', 0.20);
 ?>
 
 <div class="page-header">
   <div>
     <div class="page-title"><?= $editing ? 'Edit Campaign' : 'Create Campaign' ?></div>
-    <div class="page-subtitle"><?= $editing ? 'Editing ' . htmlspecialchars($editing['campaign_id']) : 'Set up your new ad campaign' ?></div>
+    <div class="page-subtitle"><?= $editing ? 'Editing ' . htmlspecialchars($editing['campaign_id']) : 'Set up your new ad campaign' ?>
+      <?php if (!$editing): ?>
+      <span style="margin-left:10px;font-size:11px;background:var(--bg-3);border:1px solid var(--border);padding:3px 9px;border-radius:5px;color:var(--text-2)">
+        Campaign <?= $userCount + 1 ?> of <?= $userLimit ?>
+      </span>
+      <?php endif; ?>
+    </div>
   </div>
   <a href="/user/campaigns.php" class="btn btn-secondary">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
@@ -162,7 +211,7 @@ define('EST_CPV_DIVISOR', 0.20);
       <div class="tab-content active cmp-panel-body" data-content="0">
         <div class="form-group">
           <label class="form-label">Campaign Name *</label>
-          <input type="text" name="name" id="f_name" class="form-control" value="<?= htmlspecialchars($editing['name']??'') ?>" placeholder="e.g. US Premium Push Q1 2025">
+          <input type="text" name="name" id="f_name" class="form-control" value="<?= htmlspecialchars($editing['name']??'') ?>" placeholder="e.g. Campaign-1">
         </div>
         <div class="form-group">
           <label class="form-label">CPV Bid (USD) *</label>
@@ -389,15 +438,20 @@ define('EST_CPV_DIVISOR', 0.20);
         </div>
       </div>
 
-      <!-- STEP 6: Budget -->
+      <!-- STEP 6: Budget — MIN $50 -->
       <div class="tab-content cmp-panel-body" data-content="6">
         <div class="form-group">
           <label class="form-label">Daily Budget (USD) *</label>
           <div style="position:relative">
             <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text-2);font-weight:600">$</span>
-            <input type="number" name="daily_budget" id="f_budget" class="form-control" style="padding-left:26px" min="1" step="0.01" value="<?= htmlspecialchars((string)($editing['daily_budget'] ?? $editing['budget'] ?? '')) ?>" placeholder="50.00" oninput="updateEstimate()">
+            <input type="number" name="daily_budget" id="f_budget" class="form-control"
+                   style="padding-left:26px"
+                   min="<?= MIN_DAILY_BUDGET ?>" step="0.01"
+                   value="<?= htmlspecialchars((string)($editing['daily_budget'] ?? $editing['budget'] ?? '')) ?>"
+                   placeholder="<?= number_format(MIN_DAILY_BUDGET, 2) ?>"
+                   oninput="updateEstimate()">
           </div>
-          <div class="form-hint">Campaign pauses when daily budget is reached. Resets every day.</div>
+          <div class="form-hint">Minimum daily budget is <strong style="color:var(--yellow)"><?= fmtMoney(MIN_DAILY_BUDGET) ?></strong>. Campaign pauses when daily budget is reached. Resets every day.</div>
         </div>
         <div class="form-group">
           <label class="form-label">Delivery Mode *</label>
@@ -427,9 +481,9 @@ define('EST_CPV_DIVISOR', 0.20);
           Your current balance: <strong style="margin-left:4px" data-live-balance><?= fmtMoney($user['balance']) ?></strong>
         </div>
         <div style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--r-sm);padding:14px;margin-top:8px">
-          <div style="font-size:12px;color:var(--text-2);margin-bottom:6px">Estimated daily reach</div>
+          <div style="font-size:12px;color:var(--text-2);margin-bottom:6px">Estimated daily views</div>
           <div style="font-size:22px;font-weight:700;color:var(--yellow)" id="estViews">~0</div>
-          <div style="font-size:12px;color:var(--text-2);margin-top:2px">estimated views per day (budget ÷ $<?= number_format(EST_CPV_DIVISOR, 2) ?>/view)</div>
+          
         </div>
       </div>
 
@@ -488,8 +542,8 @@ define('EST_CPV_DIVISOR', 0.20);
 </style>
 
 <script>
-// ── IMPORTANT: Estimated daily reach uses divisor 0.20 ─
 const EST_CPV_DIVISOR = 0.20;
+const MIN_BUDGET      = <?= MIN_DAILY_BUDGET ?>;
 
 var totalSteps=8, currentStep=0;
 var selectedSources = <?= json_encode(array_values($editingSources)) ?>;
@@ -544,13 +598,16 @@ function validateStep(n){
   if(n===2){ if(selectedCountries.length===0){showError('Select at least one country');return false;} }
   if(n===4){ if(selectedSources.length===0){showError('Select at least one traffic source');return false;} }
   if(n===6){
-    if(!parseFloat(document.getElementById('f_budget').value)||parseFloat(document.getElementById('f_budget').value)<1){showError('Daily budget must be at least $1.00');return false;}
+    var b = parseFloat(document.getElementById('f_budget').value);
+    if(!b || b < MIN_BUDGET){
+      showError('Daily budget must be at least $' + MIN_BUDGET.toFixed(2));
+      return false;
+    }
     if(!document.querySelector('input[name="delivery"]:checked')){showError('Please select a delivery mode');return false;}
   }
   return true;
 }
 
-// ── Geo ──
 const STATES_DATA = <?= $statesJson ?>;
 var selectedCountries = <?= json_encode(array_values($editing['countries']??[])) ?>;
 var selectedStates    = <?= $editingStatesJson ?>;
@@ -647,7 +704,6 @@ function updateGeoSummary(){
 updateCountryInputs();
 if (selectedCountries.length > 0) openStatePicker(selectedCountries[0]);
 
-// Creative card highlight
 document.querySelectorAll('.creative-card').forEach(function(card){
   card.addEventListener('click', function(){
     document.querySelectorAll('.creative-card').forEach(function(c){ c.style.borderColor=''; c.style.background=''; });
@@ -656,7 +712,6 @@ document.querySelectorAll('.creative-card').forEach(function(card){
   });
 });
 
-// Radio groups
 document.querySelectorAll('.radio-group').forEach(function(grp){
   grp.querySelectorAll('.radio-option').forEach(function(opt){
     opt.addEventListener('click', function(e){
@@ -668,7 +723,6 @@ document.querySelectorAll('.radio-group').forEach(function(grp){
   });
 });
 
-// Schedule
 function toggleCell(c){ c.classList.toggle('active'); }
 function selectAllSchedule(){ document.querySelectorAll('.schedule-cell').forEach(function(c){ c.classList.add('active'); }); }
 function clearSchedule(){ document.querySelectorAll('.schedule-cell').forEach(function(c){ c.classList.remove('active'); }); }
@@ -685,7 +739,6 @@ function buildSchedulePayload(){
   });
 }
 
-// Sources
 function toggleSource(row){
   var src=row.dataset.source, chk=row.querySelector('input[type="checkbox"]');
   if (row.classList.contains('selected')) {
@@ -697,7 +750,6 @@ function toggleSource(row){
   }
 }
 
-// Delivery
 function setDelivery(mode){
   document.getElementById('d_asap').classList.toggle('active', mode==='asap');
   document.getElementById('d_even').classList.toggle('active', mode==='even');
@@ -705,7 +757,6 @@ function setDelivery(mode){
   document.getElementById('r_even').checked = mode==='even';
 }
 
-// IP/Domain
 var ipItems     = <?= json_encode(array_values($editing['ip_list']??[])) ?>;
 var domainItems = <?= json_encode(array_values($editing['domain_list']??[])) ?>;
 function renderTags(cid, hid, items, type){
@@ -725,21 +776,18 @@ function addDomain(){ var v=document.getElementById('domainInput').value.trim();
 document.getElementById('ipInput').addEventListener('keypress', function(e){ if(e.key==='Enter'){ e.preventDefault(); addIp(); } });
 document.getElementById('domainInput').addEventListener('keypress', function(e){ if(e.key==='Enter'){ e.preventDefault(); addDomain(); } });
 
-// ── ESTIMATED REACH — budget / 0.20 per view ────────
 function updateEstimate(){
   var budget = parseFloat(document.getElementById('f_budget').value || 0);
   var est = budget > 0 ? Math.round(budget / EST_CPV_DIVISOR) : 0;
   var el = document.getElementById('estViews');
   if (el) el.textContent = '~' + est.toLocaleString();
 }
-// Attach listener at DOM load too (in case oninput is stripped)
 document.addEventListener('DOMContentLoaded', function(){
   var bi = document.getElementById('f_budget');
   if (bi) bi.addEventListener('input', updateEstimate);
   updateEstimate();
 });
 
-// Summary
 function buildSummary(){
   buildSchedulePayload(); updateCountryInputs();
   var name=document.getElementById('f_name').value||'-';

@@ -1,6 +1,17 @@
 -- ============================================================
--- Advora MySQL Schema
+-- Advora — Complete Database Schema (Patch v2)
+-- For fresh installs OR clean rebuilds
 -- Compatible with MySQL 5.7+ / MariaDB 10.3+ (Hostinger)
+-- ============================================================
+--
+-- HOW TO USE:
+--   FRESH INSTALL  → just run this whole file in phpMyAdmin (SQL tab)
+--   EXISTING SITE  → DO NOT run this; use MIGRATION.sql instead so your
+--                    existing data isn't wiped.
+--
+-- This schema includes EVERYTHING up to and including patch v2:
+--   - users.campaign_limit  (per-user campaign capacity)
+--   - stats_hourly          (live hourly chart bucket table)
 -- ============================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -21,6 +32,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `doc_verified`     TINYINT(1)     NOT NULL DEFAULT 0,
   `balance`          DECIMAL(14,4)  NOT NULL DEFAULT 0,
   `account_type`     VARCHAR(32)    NOT NULL DEFAULT 'rookie',
+  `campaign_limit`   INT            NOT NULL DEFAULT 3,
   `disabled`         TINYINT(1)     NOT NULL DEFAULT 0,
   `created_at`       INT UNSIGNED   NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
@@ -30,32 +42,32 @@ CREATE TABLE IF NOT EXISTS `users` (
 
 -- ── Campaigns ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS `campaigns` (
-  `campaign_id`  VARCHAR(32)    NOT NULL,
-  `user_id`      VARCHAR(32)    NOT NULL,
-  `name`         VARCHAR(191)   NOT NULL,
-  `cpv`          DECIMAL(10,4)  NOT NULL DEFAULT 0,
-  `cpc`          DECIMAL(10,4)  NOT NULL DEFAULT 0,
-  `creative_id`  VARCHAR(32)    DEFAULT NULL,
-  `countries`    TEXT           NULL,
-  `states`       TEXT           NULL,
-  `schedule`     TEXT           NULL,
-  `ip_mode`      VARCHAR(16)    NOT NULL DEFAULT 'off',
-  `domain_mode`  VARCHAR(16)    NOT NULL DEFAULT 'off',
-  `ip_list`      TEXT           NULL,
-  `domain_list`  TEXT           NULL,
-  `daily_budget` DECIMAL(14,2)  NOT NULL DEFAULT 0,
-  `budget`       DECIMAL(14,2)  NOT NULL DEFAULT 0,
-  `delivery`     VARCHAR(16)    NOT NULL DEFAULT 'even',
-  `sources`      TEXT           NULL,
-  `spent`        DECIMAL(14,4)  NOT NULL DEFAULT 0,
-  `impressions`  BIGINT         NOT NULL DEFAULT 0,
-  `clicks`       BIGINT         NOT NULL DEFAULT 0,
-  `good_hits`    BIGINT         NOT NULL DEFAULT 0,
-  `views_count`  BIGINT         NOT NULL DEFAULT 0,
-  `status`       VARCHAR(16)    NOT NULL DEFAULT 'review',
-  `reject_reason` TEXT          NULL,
-  `created_at`   INT UNSIGNED   NOT NULL DEFAULT 0,
-  `updated_at`   INT UNSIGNED   NOT NULL DEFAULT 0,
+  `campaign_id`   VARCHAR(32)    NOT NULL,
+  `user_id`       VARCHAR(32)    NOT NULL,
+  `name`          VARCHAR(191)   NOT NULL,
+  `cpv`           DECIMAL(10,4)  NOT NULL DEFAULT 0,
+  `cpc`           DECIMAL(10,4)  NOT NULL DEFAULT 0,
+  `creative_id`   VARCHAR(32)    DEFAULT NULL,
+  `countries`     TEXT           NULL,
+  `states`        TEXT           NULL,
+  `schedule`      TEXT           NULL,
+  `ip_mode`       VARCHAR(16)    NOT NULL DEFAULT 'off',
+  `domain_mode`   VARCHAR(16)    NOT NULL DEFAULT 'off',
+  `ip_list`       TEXT           NULL,
+  `domain_list`   TEXT           NULL,
+  `daily_budget`  DECIMAL(14,2)  NOT NULL DEFAULT 0,
+  `budget`        DECIMAL(14,2)  NOT NULL DEFAULT 0,
+  `delivery`      VARCHAR(16)    NOT NULL DEFAULT 'even',
+  `sources`       TEXT           NULL,
+  `spent`         DECIMAL(14,4)  NOT NULL DEFAULT 0,
+  `impressions`   BIGINT         NOT NULL DEFAULT 0,
+  `clicks`        BIGINT         NOT NULL DEFAULT 0,
+  `good_hits`     BIGINT         NOT NULL DEFAULT 0,
+  `views_count`   BIGINT         NOT NULL DEFAULT 0,
+  `status`        VARCHAR(16)    NOT NULL DEFAULT 'review',
+  `reject_reason` TEXT           NULL,
+  `created_at`    INT UNSIGNED   NOT NULL DEFAULT 0,
+  `updated_at`    INT UNSIGNED   NOT NULL DEFAULT 0,
   PRIMARY KEY (`campaign_id`),
   KEY `idx_user`   (`user_id`),
   KEY `idx_status` (`status`)
@@ -98,7 +110,7 @@ CREATE TABLE IF NOT EXISTS `topups` (
   KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ── Stats (daily aggregates) ────────────────────────────
+-- ── Stats (daily aggregates — used by Metrics page) ─────
 CREATE TABLE IF NOT EXISTS `stats` (
   `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`     VARCHAR(32)     NOT NULL,
@@ -112,6 +124,24 @@ CREATE TABLE IF NOT EXISTS `stats` (
   UNIQUE KEY `uk_camp_date` (`campaign_id`,`date`),
   KEY `idx_user` (`user_id`),
   KEY `idx_date` (`date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── Stats Hourly (CST) — drives the live 24h chart ──────
+-- Each row = exactly the stats injected during one CST hour for one campaign.
+-- The dashboard reads this table to render hour-accurate bars that grow live.
+CREATE TABLE IF NOT EXISTS `stats_hourly` (
+  `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`     VARCHAR(32)     NOT NULL,
+  `campaign_id` VARCHAR(32)     NOT NULL,
+  `hour_cst`    DATETIME        NOT NULL COMMENT 'Hour bucket in CST, e.g. 2026-04-26 14:00:00',
+  `impressions` BIGINT          NOT NULL DEFAULT 0,
+  `clicks`      BIGINT          NOT NULL DEFAULT 0,
+  `good_hits`   BIGINT          NOT NULL DEFAULT 0,
+  `spent`       DECIMAL(14,4)   NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_camp_hour` (`campaign_id`,`hour_cst`),
+  KEY `idx_user_hour` (`user_id`,`hour_cst`),
+  KEY `idx_hour` (`hour_cst`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ── Notifications (user-facing) ─────────────────────────

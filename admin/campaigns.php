@@ -50,8 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $campaigns = readJson(CAMPAIGNS_FILE);
 $users     = readJson(USERS_FILE);
+$creatives = readJson(CREATIVES_FILE);
 $userMap   = [];
 foreach ($users as $u) $userMap[$u['id']] = $u['username'];
+$creativeMap = [];
+foreach ($creatives as $cr) $creativeMap[$cr['id']] = $cr;
 
 $filter = $_GET['filter'] ?? 'all';
 if ($filter !== 'all') {
@@ -92,6 +95,7 @@ $campaigns = array_reverse($campaigns);
                     <th>ID</th>
                     <th>User</th>
                     <th>Name</th>
+                    <th>Creative</th>
                     <th>Status</th>
                     <th>CPV</th>
                     <th>Daily Budget</th>
@@ -113,11 +117,27 @@ $campaigns = array_reverse($campaigns);
                     $dailyBudget = $c['daily_budget'] ?? $c['budget'] ?? 0;
                     $sources     = $c['sources'] ?? [];
                     $delivery    = $c['delivery'] ?? 'even';
+                    $cr          = !empty($c['creative_id']) && isset($creativeMap[$c['creative_id']]) ? $creativeMap[$c['creative_id']] : null;
                 ?>
                 <tr>
                     <td><code style="color:var(--yellow);font-size:11px"><?= $c['campaign_id'] ?></code></td>
                     <td><?= htmlspecialchars($userMap[$c['user_id']] ?? 'Unknown') ?></td>
                     <td><strong><?= htmlspecialchars($c['name']) ?></strong></td>
+                    <td>
+                        <?php if ($cr): ?>
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <div style="font-size:12px;font-weight:600;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<?= htmlspecialchars($cr['name']) ?>"><?= htmlspecialchars($cr['name']) ?></div>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding:3px 8px"
+                                onclick="previewCreative('<?= htmlspecialchars($cr['id']) ?>', '<?= htmlspecialchars(addslashes($cr['name'])) ?>')">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                View
+                            </button>
+                        </div>
+                        <div style="font-size:10px;color:var(--text-3);font-family:'Courier New',monospace;margin-top:2px"><?= htmlspecialchars($cr['id']) ?></div>
+                        <?php else: ?>
+                        <span style="color:var(--text-3);font-size:12px">— None —</span>
+                        <?php endif; ?>
+                    </td>
                     <td>
                         <span class="badge <?= $sCls ?>"
                           data-live-badge="camp:<?= $c['campaign_id'] ?>:status"
@@ -229,14 +249,6 @@ $campaigns = array_reverse($campaigns);
     </div>
 </div>
 
-<script>
-function rejectCamp(id) {
-    document.getElementById('reject_cid').value = id;
-    openModal('rejectModal');
-}
-</script>
-
-
 <!-- States detail modal -->
 <div class="modal" id="statesModal">
   <div class="modal-box" style="max-width:500px">
@@ -250,7 +262,39 @@ function rejectCamp(id) {
   </div>
 </div>
 
+<!-- Creative Preview Modal -->
+<div class="modal" id="previewModal">
+  <div class="modal-box" style="max-width:900px;width:95vw">
+    <div class="modal-header">
+      <div class="modal-title" id="previewTitle">Creative Preview</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a id="previewOpenBtn" href="#" target="_blank" class="btn btn-secondary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Open in Tab
+        </a>
+        <div class="modal-close" onclick="closeModal('previewModal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+      </div>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden">
+      <div style="background:var(--bg-3);padding:8px 12px;display:flex;gap:6px;align-items:center;border-bottom:1px solid var(--border)">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--red);opacity:.7"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--orange);opacity:.7"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--green);opacity:.7"></div>
+        <div style="flex:1;background:var(--bg-4);border-radius:4px;padding:3px 10px;font-size:11px;color:var(--text-3);margin-left:6px" id="previewUrlBar">Preview</div>
+      </div>
+      <iframe id="previewFrame" style="width:100%;height:500px;border:none;background:#fff" sandbox="allow-scripts allow-same-origin"></iframe>
+    </div>
+  </div>
+</div>
+
 <script>
+function rejectCamp(id) {
+    document.getElementById('reject_cid').value = id;
+    openModal('rejectModal');
+}
+
 function showStates(el) {
   var title = el.querySelector('span').textContent + ' — States';
   var tip   = el.getAttribute('title');
@@ -269,5 +313,16 @@ function showStates(el) {
   }
   openModal('statesModal');
 }
+
+// Reuse the existing creatives.php preview endpoint — admin already has access
+function previewCreative(id, name) {
+  var url = '/admin/creatives.php?preview=' + encodeURIComponent(id);
+  document.getElementById('previewTitle').textContent  = name + ' — Creative Preview';
+  document.getElementById('previewFrame').src          = url;
+  document.getElementById('previewOpenBtn').href       = url;
+  document.getElementById('previewUrlBar').textContent = name + '.html';
+  openModal('previewModal');
+}
 </script>
+
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

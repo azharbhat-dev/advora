@@ -1,8 +1,14 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
 header('Content-Type: application/json');
-if (!isAdmin()) { echo json_encode([
-    'unread_admin_notifs' => countUnreadAdminNotifs(),'success'=>false]); exit; }
+if (!isAdmin()) {
+    echo json_encode([
+        'success'             => false,
+        'unread_admin_notifs' => countUnreadAdminNotifs(),
+        'total_admin_notifs'  => countTotalAdminNotifs(),
+    ]);
+    exit;
+}
 
 $campaigns = readJson(CAMPAIGNS_FILE);
 $users     = readJson(USERS_FILE);
@@ -12,7 +18,7 @@ $creatives = readJson(CREATIVES_FILE);
 $totals = [
     'impressions' => 0,
     'views'       => 0,
-    'hits'        => 0,   // stored as clicks
+    'hits'        => 0,
     'spent'       => 0,
     'balance'     => 0,
     'users'       => count($users),
@@ -21,8 +27,8 @@ $totals = [
 foreach ($campaigns as $c) {
     $totals['impressions'] += $c['impressions'] ?? 0;
     $totals['views']       += $c['good_hits']   ?? 0;
-    $totals['hits']        += $c['clicks']       ?? 0;
-    $totals['spent']       += $c['spent']        ?? 0;
+    $totals['hits']        += $c['clicks']      ?? 0;
+    $totals['spent']       += $c['spent']       ?? 0;
 }
 foreach ($users as $u) $totals['balance'] += $u['balance'] ?? 0;
 
@@ -38,8 +44,8 @@ foreach ($campaigns as $c) {
         'status'      => $c['status'],
         'impressions' => $c['impressions'] ?? 0,
         'views'       => $c['good_hits']   ?? 0,
-        'hits'        => $c['clicks']       ?? 0,
-        'spent'       => $c['spent']        ?? 0,
+        'hits'        => $c['clicks']      ?? 0,
+        'spent'       => $c['spent']       ?? 0,
     ];
 }
 
@@ -55,13 +61,14 @@ $topupList = [];
 foreach ($topups as $t) { $topupList[$t['id']] = ['status' => $t['status']]; }
 
 echo json_encode([
+    'success'             => true,
+    'totals'              => $totals,
+    'pending'             => $pending,
+    'campaigns'           => $campList,
+    'users'               => $userList,
+    'creatives'           => $crList,
+    'topups'              => $topupList,
     'unread_admin_notifs' => countUnreadAdminNotifs(),
-    'success'   => true,
-    'totals'    => $totals,
-    'pending'   => $pending,
-    'campaigns' => $campList,
-    'users'     => $userList,
-    'creatives' => $crList,
-    'topups'    => $topupList,
-    'timestamp' => time()
+    'total_admin_notifs'  => countTotalAdminNotifs(),
+    'timestamp'           => time(),
 ]);

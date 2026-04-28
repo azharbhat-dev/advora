@@ -61,7 +61,7 @@ $atc = $atColors[$at] ?? $atColors['rookie'];
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div class="card-title" style="margin:0">Personal Details</div>
-      <span style="font-size:11px;color:var(--text-3);background:var(--bg-3);border:1px solid var(--border);padding:3px 9px;border-radius:5px">View only</span>
+      <span style="font-size:11px;color:var(--text-3);background:var(--bg-3);border:1px solid var(--border);padding:3px 9px;border-radius:5px"></span>
     </div>
     <?php
     $fields = [
@@ -83,7 +83,7 @@ $atc = $atColors[$at] ?? $atColors['rookie'];
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div class="card-title" style="margin:0">Business</div>
-      <span style="font-size:11px;color:var(--text-3);background:var(--bg-3);border:1px solid var(--border);padding:3px 9px;border-radius:5px">View only</span>
+      <span style="font-size:11px;color:var(--text-3);background:var(--bg-3);border:1px solid var(--border);padding:3px 9px;border-radius:5px"></span>
     </div>
     <div class="detail-row">
       <span class="dk">Business Name</span>

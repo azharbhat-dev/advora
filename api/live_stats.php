@@ -6,9 +6,6 @@ if (!isUser()) { echo json_encode(['success' => false]); exit; }
 $user = currentUser();
 if (!$user) { echo json_encode(['success' => false]); exit; }
 
-$range = (int)($_GET['range'] ?? 7);
-if (!in_array($range, [7,14,30])) $range = 7;
-
 // ── Campaigns ──────────────────────────────────────────
 $stmt = db()->prepare('SELECT * FROM campaigns WHERE user_id = ?');
 $stmt->execute([$user['id']]);
@@ -45,89 +42,98 @@ foreach ($stmt->fetchAll() as $t) {
     $topupList[$t['id']] = ['status' => $t['status'], 'amount' => (float)$t['amount']];
 }
 
-// ── 24h ROLLING CHART IN CST ────────────────────────────
-// Stats table stores daily totals per campaign. For a 24h rolling view
-// we take today + yesterday (in CST) and split each day's totals evenly
-// across 24 hours.
-$cstTz     = new DateTimeZone('America/Chicago');
-$cstNow    = new DateTime('now', $cstTz);
-$nowHour   = (int)$cstNow->format('G');   // 0-23
-$today     = $cstNow->format('Y-m-d');
-$yesterday = (new DateTime('yesterday', $cstTz))->format('Y-m-d');
+// ════════════════════════════════════════════════════════
+// 24-HOUR ROLLING CHART — true hourly buckets
+// Each hour shows ONLY what was actually injected during that hour.
+// Resets naturally as time moves forward (older hours fall off).
+// ════════════════════════════════════════════════════════
+$cstTz   = new DateTimeZone('America/Chicago');
+$cstNow  = new DateTime('now', $cstTz);
+$nowHour = (int)$cstNow->format('G');
 
-// Aggregate today + yesterday for this user across ALL their campaigns
-$stmt = db()->prepare(
-    'SELECT `date`, SUM(impressions) AS imp, SUM(good_hits) AS vw,
-            SUM(clicks) AS ht, SUM(spent) AS sp
-     FROM stats WHERE user_id = ? AND `date` IN (?, ?)
-     GROUP BY `date`'
-);
-$stmt->execute([$user['id'], $yesterday, $today]);
-$dayMap = ['imp'=>0,'vw'=>0,'ht'=>0,'sp'=>0];
-$days   = [$yesterday => $dayMap, $today => $dayMap];
-foreach ($stmt->fetchAll() as $r) {
-    $days[$r['date']] = [
-        'imp' => (int)$r['imp'],
-        'vw'  => (int)$r['vw'],
-        'ht'  => (int)$r['ht'],
-        'sp'  => (float)$r['sp'],
+// Build the 24 hour buckets we want to display, oldest first → current
+// Window: from (now - 23h, hour-floored) up to current hour (inclusive).
+$windowStart = (clone $cstNow)->modify('-23 hours');
+$windowStart = new DateTime($windowStart->format('Y-m-d H:00:00'), $cstTz);
+
+$labels = [];
+$bucketKeys = [];   // 'Y-m-d H:00:00' strings for matching
+for ($i = 0; $i < 24; $i++) {
+    $b = (clone $windowStart)->modify("+{$i} hours");
+    $bucketKeys[] = $b->format('Y-m-d H:00:00');
+    $labels[]     = $b->format('H:00') . ' CST';
+}
+
+// Initialize all-zero buckets
+$emptyBucket = ['imp'=>0,'vw'=>0,'ht'=>0,'sp'=>0.0];
+$userBuckets = array_fill_keys($bucketKeys, $emptyBucket);
+
+// Per-campaign buckets if a campaign_id was passed
+$campCharts = [];
+$wantCampId = $_GET['campaign_id'] ?? null;
+$campOwn = false;
+if ($wantCampId) {
+    foreach ($userCampaigns as $c) {
+        if ($c['campaign_id'] === $wantCampId) { $campOwn = true; break; }
+    }
+}
+$campBuckets = $campOwn ? array_fill_keys($bucketKeys, $emptyBucket) : null;
+
+// Pull from stats_hourly if the table exists
+if (_hasHourlyStatsTable()) {
+    $stmt = db()->prepare(
+        'SELECT campaign_id,
+                DATE_FORMAT(hour_cst, "%Y-%m-%d %H:%i:%s") AS hk,
+                impressions, clicks, good_hits, spent
+         FROM stats_hourly
+         WHERE user_id = ? AND hour_cst >= ? AND hour_cst <= ?'
+    );
+    $startStr = $windowStart->format('Y-m-d H:00:00');
+    $endStr   = (clone $cstNow)->format('Y-m-d H:00:00');
+    $stmt->execute([$user['id'], $startStr, $endStr]);
+
+    foreach ($stmt->fetchAll() as $r) {
+        // hk should match a bucket key. MySQL DATETIME columns return without T,
+        // so the format above produces "Y-m-d H:00:00" matching bucketKeys exactly.
+        $hk = $r['hk'];
+        if (!isset($userBuckets[$hk])) continue;
+        $userBuckets[$hk]['imp'] += (int)$r['impressions'];
+        $userBuckets[$hk]['vw']  += (int)$r['good_hits'];
+        $userBuckets[$hk]['ht']  += (int)$r['clicks'];
+        $userBuckets[$hk]['sp']  += (float)$r['spent'];
+
+        if ($campBuckets !== null && $r['campaign_id'] === $wantCampId) {
+            $campBuckets[$hk]['imp'] += (int)$r['impressions'];
+            $campBuckets[$hk]['vw']  += (int)$r['good_hits'];
+            $campBuckets[$hk]['ht']  += (int)$r['clicks'];
+            $campBuckets[$hk]['sp']  += (float)$r['spent'];
+        }
+    }
+}
+
+// Build the response chart arrays
+function _bucketsToChart($labels, $buckets) {
+    $imp = $vw = $ht = $sp = $ctr = [];
+    foreach ($buckets as $b) {
+        $imp[] = (int)$b['imp'];
+        $vw[]  = (int)$b['vw'];
+        $ht[]  = (int)$b['ht'];
+        $sp[]  = round((float)$b['sp'], 4);
+        $ctr[] = $b['imp'] > 0 ? round($b['vw'] / $b['imp'] * 100, 2) : 0;
+    }
+    return [
+        'labels'      => $labels,
+        'impressions' => $imp,
+        'views'       => $vw,
+        'hits'        => $ht,
+        'spend'       => $sp,
+        'ctr'         => $ctr,
     ];
 }
 
-$chart = ['labels'=>[],'impressions'=>[],'views'=>[],'hits'=>[],'spend'=>[],'ctr'=>[]];
-// Walk 24 hours — hours AFTER "now" belong to YESTERDAY (they come from past day)
-// hours 0..nowHour belong to TODAY
-for ($h = 0; $h < 24; $h++) {
-    $chart['labels'][] = str_pad($h, 2, '0', STR_PAD_LEFT) . ':00 CST';
-    $isYesterday      = $h > $nowHour;
-    $srcDate          = $isYesterday ? $yesterday : $today;
-    $d                = $days[$srcDate];
-
-    $hi = (int)floor($d['imp'] / 24);
-    $hv = (int)floor($d['vw']  / 24);
-    $hh = (int)floor($d['ht']  / 24);
-    $hs = round($d['sp'] / 24, 4);
-
-    $chart['impressions'][] = $hi;
-    $chart['views'][]       = $hv;
-    $chart['hits'][]        = $hh;
-    $chart['spend'][]       = $hs;
-    $chart['ctr'][]         = $hi > 0 ? round($hv / $hi * 100, 2) : 0;
-}
-
-// ── Per-campaign 24h chart (for campaign_view live updates) ──
-$campCharts = [];
-if (!empty($_GET['campaign_id'])) {
-    $cid  = $_GET['campaign_id'];
-    // Verify ownership
-    $own = false;
-    foreach ($userCampaigns as $c) if ($c['campaign_id'] === $cid) { $own = true; break; }
-    if ($own) {
-        $stmt = db()->prepare(
-            'SELECT `date`, SUM(impressions) AS imp, SUM(good_hits) AS vw,
-                    SUM(clicks) AS ht, SUM(spent) AS sp
-             FROM stats WHERE campaign_id = ? AND `date` IN (?, ?) GROUP BY `date`'
-        );
-        $stmt->execute([$cid, $yesterday, $today]);
-        $cdays = [$yesterday => $dayMap, $today => $dayMap];
-        foreach ($stmt->fetchAll() as $r) {
-            $cdays[$r['date']] = [
-                'imp'=>(int)$r['imp'], 'vw'=>(int)$r['vw'],
-                'ht'=>(int)$r['ht'],   'sp'=>(float)$r['sp'],
-            ];
-        }
-        $cc = ['labels'=>$chart['labels'],'impressions'=>[],'views'=>[],'hits'=>[],'spend'=>[],'ctr'=>[]];
-        for ($h = 0; $h < 24; $h++) {
-            $d  = $cdays[$h > $nowHour ? $yesterday : $today];
-            $hi = (int)floor($d['imp']/24); $hv = (int)floor($d['vw']/24);
-            $cc['impressions'][] = $hi;
-            $cc['views'][]       = $hv;
-            $cc['hits'][]        = (int)floor($d['ht']/24);
-            $cc['spend'][]       = round($d['sp']/24, 4);
-            $cc['ctr'][]         = $hi > 0 ? round($hv/$hi*100, 2) : 0;
-        }
-        $campCharts[$cid] = $cc;
-    }
+$chart = _bucketsToChart($labels, $userBuckets);
+if ($campBuckets !== null) {
+    $campCharts[$wantCampId] = _bucketsToChart($labels, $campBuckets);
 }
 
 // Unread notifications for bell

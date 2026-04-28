@@ -1,5 +1,5 @@
 /* =========================================================
-   Advora — app.js (live charts)
+   Advora — app.js (live charts + reliable admin sound)
    ========================================================= */
 
 // ── Modals ───────────────────────────────────────────────
@@ -67,11 +67,18 @@ function setLiveBadge(key, status) {
 // ── Sound System ─────────────────────────────────────────
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let _audioCtx  = null;
-function getAudioCtx() { if (!_audioCtx) _audioCtx = new AudioCtx(); return _audioCtx; }
+function getAudioCtx() {
+  if (!_audioCtx && AudioCtx) _audioCtx = new AudioCtx();
+  // Auto-resume if suspended (common after tab regains focus)
+  if (_audioCtx && _audioCtx.state === 'suspended') {
+    _audioCtx.resume().catch(()=>{});
+  }
+  return _audioCtx;
+}
 
 function playNotifSound() {
   try {
-    const ctx = getAudioCtx();
+    const ctx = getAudioCtx(); if (!ctx) return;
     [880, 1100].forEach((freq, i) => {
       const osc=ctx.createOscillator(), gain=ctx.createGain();
       osc.connect(gain); gain.connect(ctx.destination);
@@ -84,16 +91,21 @@ function playNotifSound() {
     });
   } catch(e){}
 }
-function playAdminSound() {
+
+// Distinct, attention-grabbing chime for admin
+function playAdminNotifSound() {
   try {
-    const ctx=getAudioCtx(), osc=ctx.createOscillator(), gain=ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.type='triangle';
-    osc.frequency.setValueAtTime(660, ctx.currentTime);
-    osc.frequency.linearRampToValueAtTime(880, ctx.currentTime + 0.08);
-    gain.gain.setValueAtTime(0.22, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+    const ctx = getAudioCtx(); if (!ctx) return;
+    [660, 880, 1100].forEach((freq, i) => {
+      const osc=ctx.createOscillator(), gain=ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type='sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + i*0.1);
+      gain.gain.setValueAtTime(0, ctx.currentTime + i*0.1);
+      gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + i*0.1 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.1 + 0.35);
+      osc.start(ctx.currentTime + i*0.1); osc.stop(ctx.currentTime + i*0.1 + 0.35);
+    });
   } catch(e){}
 }
 
@@ -102,7 +114,9 @@ function unlockAudio() {
   if (_audioUnlocked) return;
   _audioUnlocked = true;
   try {
-    const ctx=getAudioCtx(), buf=ctx.createBuffer(1,1,22050), src=ctx.createBufferSource();
+    const ctx = getAudioCtx(); if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(()=>{});
+    const buf=ctx.createBuffer(1,1,22050), src=ctx.createBufferSource();
     src.buffer=buf; src.connect(ctx.destination); src.start(0);
   } catch(e){}
 }
@@ -110,7 +124,7 @@ document.addEventListener('click',      unlockAudio, { once: true });
 document.addEventListener('keydown',    unlockAudio, { once: true });
 document.addEventListener('touchstart', unlockAudio, { once: true });
 
-// ── Notification bell ────────────────────────────────────
+// ── Notification bell (user) ─────────────────────────────
 let _lastUnreadCount = -1;
 function updateNotifBell(count) {
   const badge    = document.querySelector('.topbar-badge');
@@ -121,21 +135,11 @@ function updateNotifBell(count) {
   _lastUnreadCount = count;
 }
 
-// ── Admin pending tracker ────────────────────────────────
-let _lastPendingTotal = -1;
-function checkAdminNewSubmissions(pending) {
-  const total = (pending.campaigns||0) + (pending.creatives||0) + (pending.topups||0);
-  if (_lastPendingTotal >= 0 && total > _lastPendingTotal) playAdminSound();
-  _lastPendingTotal = total;
-}
-
 // ════════════════════════════════════════════════════════
 // LIVE CHART SUPPORT
-// Pages register their chart via window.registerLiveChart(...)
-// The poll loop feeds new data on every tick.
 // ════════════════════════════════════════════════════════
-window._liveChart = null;       // dashboard OR campaign chart
-window._liveChartMode = 'user'; // 'user' → use d.chart, 'campaign' → use d.camp_charts[id]
+window._liveChart = null;
+window._liveChartMode = 'user';
 window._liveCampaignId = null;
 
 window.registerLiveChart = function(chartInstance, mode, campaignId) {
@@ -147,7 +151,6 @@ window.registerLiveChart = function(chartInstance, mode, campaignId) {
 function feedChart(chartData) {
   const chart = window._liveChart;
   if (!chart || !chartData) return;
-  // Figure out which metric is currently active (dataset label-based)
   const activeKey = (window.gaActive || 'views');
   const keyMap = {
     views: 'views', impressions: 'impressions', hits: 'hits', spend: 'spend', ctr: 'ctr'
@@ -157,7 +160,7 @@ function feedChart(chartData) {
   const newLabels = chartData.labels || [];
   chart.data.labels            = newLabels;
   chart.data.datasets[0].data  = newData.map(v => parseFloat(v) || 0);
-  chart.update('none'); // no animation for live updates
+  chart.update('none');
 }
 
 // ── Apply user data ──────────────────────────────────────
@@ -201,7 +204,6 @@ function applyUser(d) {
 
   if (d.unread_notifications !== undefined) updateNotifBell(d.unread_notifications);
 
-  // ── LIVE CHART FEED ──────────────────────────────────
   if (window._liveChart) {
     if (window._liveChartMode === 'campaign' && window._liveCampaignId && d.camp_charts) {
       const cc = d.camp_charts[window._liveCampaignId];
@@ -238,7 +240,6 @@ function applyAdmin(d) {
       el.textContent   = p[k];
       el.style.display = p[k] > 0 ? '' : 'none';
     });
-    checkAdminNewSubmissions(p);
   }
   if (d.campaigns) {
     Object.entries(d.campaigns).forEach(([cid, c]) => {
@@ -258,10 +259,27 @@ function applyAdmin(d) {
   }
   if (d.creatives) Object.entries(d.creatives).forEach(([crid, cr]) => setLiveBadge('cr:'+crid+':status', cr.status));
   if (d.topups)    Object.entries(d.topups).forEach(([tid, t])  => setLiveBadge('topup:'+tid+':status', t.status));
+
+  // ── ADMIN NOTIF SOUND ──────────────────────────────
+  // Trigger sound on ANY new admin notification (total count grows),
+  // not just pending submissions. This catches every user action:
+  // creates, updates, pauses, deletes, deposits, password changes, etc.
+  if (d.total_admin_notifs !== undefined) updateAdminNotifTotal(d.total_admin_notifs);
   if (d.unread_admin_notifs !== undefined) updateAdminNotifBell(d.unread_admin_notifs);
 }
 
-let _lastAdminNotifCount = -1;
+// ── Admin notif bell + reliable sound ────────────────────
+let _lastAdminNotifTotal = -1;   // tracks GROWTH (any new notif at all)
+let _lastAdminUnread     = -1;   // tracks unread count for badge display
+
+function updateAdminNotifTotal(total) {
+  // Sound on growth — only after we've seen at least one prior poll.
+  if (_lastAdminNotifTotal >= 0 && total > _lastAdminNotifTotal) {
+    playAdminNotifSound();
+  }
+  _lastAdminNotifTotal = total;
+}
+
 function updateAdminNotifBell(count) {
   const badge = document.getElementById('admin-notif-badge');
   if (badge) {
@@ -273,23 +291,7 @@ function updateAdminNotifBell(count) {
     navBadge.textContent   = count > 9 ? '9+' : count;
     navBadge.style.display = count > 0 ? '' : 'none';
   }
-  if (_lastAdminNotifCount >= 0 && count > _lastAdminNotifCount) playAdminNotifSound();
-  _lastAdminNotifCount = count;
-}
-function playAdminNotifSound() {
-  try {
-    const ctx = getAudioCtx();
-    [660, 880, 1100].forEach((freq, i) => {
-      const osc=ctx.createOscillator(), gain=ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type='sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + i*0.1);
-      gain.gain.setValueAtTime(0, ctx.currentTime + i*0.1);
-      gain.gain.linearRampToValueAtTime(0.14, ctx.currentTime + i*0.1 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.1 + 0.3);
-      osc.start(ctx.currentTime + i*0.1); osc.stop(ctx.currentTime + i*0.1 + 0.3);
-    });
-  } catch(e){}
+  _lastAdminUnread = count;
 }
 
 // ── Poll loop ────────────────────────────────────────────
@@ -298,13 +300,12 @@ let pollTimer = null;
 async function pollOnce() {
   try {
     let url = IS_ADMIN ? '/api/admin_stats.php' : '/api/live_stats.php';
-    // Pass campaign_id through if we're on a campaign view page
     if (!IS_ADMIN && window._liveChartMode === 'campaign' && window._liveCampaignId) {
       url += '?campaign_id=' + encodeURIComponent(window._liveCampaignId) + '&t=' + Date.now();
     } else {
       url += '?t=' + Date.now();
     }
-    const r = await fetch(url);
+    const r = await fetch(url, { cache: 'no-store' });
     if (!r.ok) return;
     const d = await r.json();
     if (!d.success) return;
@@ -316,7 +317,14 @@ if (document.getElementById('sidebar')) {
   pollOnce();
   pollTimer = setInterval(pollOnce, POLL_MS);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) clearInterval(pollTimer);
-    else { pollOnce(); pollTimer = setInterval(pollOnce, POLL_MS); }
+    if (document.hidden) {
+      clearInterval(pollTimer);
+    } else {
+      // Resume audio context (browsers often suspend it when tab hidden)
+      const ctx = getAudioCtx();
+      if (ctx && ctx.state === 'suspended') ctx.resume().catch(()=>{});
+      pollOnce();
+      pollTimer = setInterval(pollOnce, POLL_MS);
+    }
   });
 }

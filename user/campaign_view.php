@@ -10,7 +10,6 @@ $stmt->execute([$id, $user['id']]);
 $campRow = $stmt->fetch();
 if (!$campRow) { flash('Campaign not found', 'error'); safeRedirect('/user/campaigns.php'); }
 
-// Decode JSON-in-column fields
 $campaign = [
     'campaign_id'   => $campRow['campaign_id'],
     'user_id'       => $campRow['user_id'],
@@ -96,40 +95,51 @@ $ctr = $campaign['impressions'] > 0 ? round($campaign['good_hits'] / $campaign['
 $statusClass = ['pending'=>'badge-pending','active'=>'badge-success','paused'=>'badge-muted','review'=>'badge-info','rejected'=>'badge-danger'][$campaign['status']] ?? 'badge-muted';
 $statusLabel = $campaign['status'] === 'review' ? 'Under Review' : $campaign['status'];
 
-// ── Build 24-hour CST rolling chart for this campaign ──
-$cstTz     = new DateTimeZone('America/Chicago');
-$cstNow    = new DateTime('now', $cstTz);
-$nowHour   = (int)$cstNow->format('G');
-$today     = $cstNow->format('Y-m-d');
-$yesterday = (new DateTime('yesterday', $cstTz))->format('Y-m-d');
+// ════════════════════════════════════════════════════════
+// 24-HOUR ROLLING CHART — true hourly buckets for THIS campaign
+// ════════════════════════════════════════════════════════
+$cstTz   = new DateTimeZone('America/Chicago');
+$cstNow  = new DateTime('now', $cstTz);
+$windowStart = (clone $cstNow)->modify('-23 hours');
+$windowStart = new DateTime($windowStart->format('Y-m-d H:00:00'), $cstTz);
 
-$stmt = db()->prepare(
-    'SELECT `date`, SUM(impressions) AS imp, SUM(good_hits) AS vw,
-            SUM(clicks) AS ht, SUM(spent) AS sp
-     FROM stats WHERE campaign_id = ? AND `date` IN (?, ?) GROUP BY `date`'
-);
-$stmt->execute([$id, $yesterday, $today]);
-$zero = ['imp'=>0,'vw'=>0,'ht'=>0,'sp'=>0];
-$days = [$yesterday => $zero, $today => $zero];
-foreach ($stmt->fetchAll() as $row) {
-    $days[$row['date']] = [
-        'imp'=>(int)$row['imp'], 'vw'=>(int)$row['vw'],
-        'ht'=>(int)$row['ht'],   'sp'=>(float)$row['sp'],
-    ];
+$chartLabels = [];
+$bucketKeys  = [];
+for ($i = 0; $i < 24; $i++) {
+    $b = (clone $windowStart)->modify("+{$i} hours");
+    $bucketKeys[]  = $b->format('Y-m-d H:00:00');
+    $chartLabels[] = $b->format('H:00') . ' CST';
 }
 
-$chartLabels = $chartViews = $chartImpressions = $chartHits = $chartSpend = $chartCtr = [];
-for ($h = 0; $h < 24; $h++) {
-    $isYest = $h > $nowHour;
-    $d = $days[$isYest ? $yesterday : $today];
-    $chartLabels[]      = str_pad($h,2,'0',STR_PAD_LEFT) . ':00 CST';
-    $hi = (int)floor($d['imp']/24);
-    $hv = (int)floor($d['vw']/24);
-    $chartImpressions[] = $hi;
-    $chartViews[]       = $hv;
-    $chartHits[]        = (int)floor($d['ht']/24);
-    $chartSpend[]       = round($d['sp']/24, 2);
-    $chartCtr[]         = $hi > 0 ? round($hv/$hi*100, 2) : 0;
+$buckets = array_fill_keys($bucketKeys, ['imp'=>0,'vw'=>0,'ht'=>0,'sp'=>0.0]);
+
+if (_hasHourlyStatsTable()) {
+    $stmt = db()->prepare(
+        'SELECT DATE_FORMAT(hour_cst, "%Y-%m-%d %H:%i:%s") AS hk,
+                impressions, clicks, good_hits, spent
+         FROM stats_hourly
+         WHERE campaign_id = ? AND hour_cst >= ? AND hour_cst <= ?'
+    );
+    $startStr = $windowStart->format('Y-m-d H:00:00');
+    $endStr   = (clone $cstNow)->format('Y-m-d H:00:00');
+    $stmt->execute([$id, $startStr, $endStr]);
+    foreach ($stmt->fetchAll() as $row) {
+        $hk = $row['hk'];
+        if (!isset($buckets[$hk])) continue;
+        $buckets[$hk]['imp'] += (int)$row['impressions'];
+        $buckets[$hk]['vw']  += (int)$row['good_hits'];
+        $buckets[$hk]['ht']  += (int)$row['clicks'];
+        $buckets[$hk]['sp']  += (float)$row['spent'];
+    }
+}
+
+$chartImpressions = $chartViews = $chartHits = $chartSpend = $chartCtr = [];
+foreach ($buckets as $b) {
+    $chartImpressions[] = (int)$b['imp'];
+    $chartViews[]       = (int)$b['vw'];
+    $chartHits[]        = (int)$b['ht'];
+    $chartSpend[]       = round((float)$b['sp'], 2);
+    $chartCtr[]         = $b['imp'] > 0 ? round($b['vw'] / $b['imp'] * 100, 2) : 0;
 }
 ?>
 
@@ -368,7 +378,6 @@ document.querySelector('.ga-metric.active').style.setProperty('--ga-color', '#1a
 // Register for live updates — campaign-specific
 window.registerLiveChart(gaChart, 'campaign', '<?= addslashes($campaign['campaign_id']) ?>');
 
-// Keep gaAllData in sync with live data so metric switching uses fresh values
 window.addEventListener('liveStatsUpdate', function(e) {
   const d = e.detail;
   if (d && d.camp_charts && d.camp_charts['<?= addslashes($campaign['campaign_id']) ?>']) {
